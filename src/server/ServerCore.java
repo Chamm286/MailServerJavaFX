@@ -7,8 +7,9 @@ import java.util.*;
 
 public class ServerCore {
 
+    // ═══════ CẤU HÌNH SERVER ═══════
     public static final String SERVER_DIR = "F:/server_mail";
-    public static final String DOMAIN     = "gmail.com";
+    public static final int    PORT       = 2023;
 
     public interface Logger {
         void log(String msg);
@@ -42,7 +43,6 @@ public class ServerCore {
                 DatagramSocket socket = new DatagramSocket(port, InetAddress.getByName("0.0.0.0"));
                 logger.log("[OK] Server started on port " + port);
                 logger.log("[DIR] " + new File(SERVER_DIR).getAbsolutePath());
-                logger.log("[DOMAIN] @" + DOMAIN);
 
                 byte[] recvBuf = new byte[16384];
                 while (running) {
@@ -55,6 +55,7 @@ public class ServerCore {
                     String req = new String(recvPkt.getData(), 0, recvPkt.getLength(), "UTF-8").trim();
                     logger.log("[RECV] " + ip.getHostAddress() + ":" + portCli + " | " + shorten(req));
 
+                    // Track online
                     if (req.startsWith("LOGIN|")) {
                         String[] parts = req.split("\\|", -1);
                         if (parts.length >= 2) {
@@ -113,11 +114,18 @@ public class ServerCore {
             case "STARRED":
                 if (p.length < 2) return "ERROR|Missing user";
                 return listStarred(p[1]);
+            case "PING":
+                return "OK|PONG";
             default:
                 return "ERROR|Unknown command";
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  YÊU CẦU #1: ĐĂNG KÝ → TẠO THƯ MỤC TRÊN SERVER
+    //  Thư mục: F:\server_mail\<username>\
+    //  Trong đó có: user.txt, pass.txt, date.txt, new_email.txt
+    // ═══════════════════════════════════════════════════════════════
     private String register(String user, String pass) {
         try {
             File dir = new File(SERVER_DIR, user);
@@ -128,7 +136,7 @@ public class ServerCore {
             new File(dir, "trash").mkdirs();
 
             String now = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
-            String email = user + "@" + DOMAIN;
+            String email = user + "@gmail.com";
 
             write(new File(dir, "user.txt"),  user);
             write(new File(dir, "pass.txt"),  pass);
@@ -136,21 +144,11 @@ public class ServerCore {
             write(new File(dir, "email.txt"), email);
             write(new File(dir, "starred.txt"), "");
 
+            // new_email.txt — chỉ chứa thông tin user (không có Thank you)
             write(new File(dir, "new_email.txt"),
-                  "Thank you for using this service. we hope that you will feel comfortable\n" +
-                  "using our mail system.\n" +
-                  "-------------------------------------------------\n" +
                   "User    : " + user + "\n" +
                   "Email   : " + email + "\n" +
                   "Created : " + now  + "\n");
-
-            write(new File(new File(dir, "inbox"), "welcome.txt"),
-                  "From          : server@" + DOMAIN + "\n" +
-                  "To            : " + email + "\n" +
-                  "IP nguoi gui  : 127.0.0.1\n" +
-                  "Thoi gian gui : " + now + "\n" +
-                  "Tieu de       : Welcome to Mail Server\n" +
-                  "Noi dung      : Thank you for using this service. we hope that you will feel comfortable using our mail system.\n");
 
             logger.log("[OK] Registered: " + email);
             return "OK|Register successful. Your email: " + email;
@@ -159,6 +157,9 @@ public class ServerCore {
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  YÊU CẦU #3: LOGIN → TRẢ VỀ DANH SÁCH TÊN FILE
+    // ═══════════════════════════════════════════════════════════════
     private String login(String user, String pass) {
         try {
             File dir = new File(SERVER_DIR, user);
@@ -176,7 +177,10 @@ public class ServerCore {
             sb.append("EMAIL|").append(myEmail).append("\n");
             sb.append("SECTION|INBOX\n");
 
-            appendAccountFiles(sb, dir, user);
+            // Danh sách file gốc của account
+            appendAccountFiles(sb, dir);
+
+            // Danh sách mail trong inbox
             appendMailList(sb, new File(dir, "inbox"), user, dir, "INBOX");
 
             return sb.toString();
@@ -185,7 +189,7 @@ public class ServerCore {
         }
     }
 
-    private void appendAccountFiles(StringBuilder sb, File dir, String user) {
+    private void appendAccountFiles(StringBuilder sb, File dir) {
         File[] files = dir.listFiles();
         if (files == null) return;
         Arrays.sort(files, Comparator.comparing(File::getName));
@@ -391,6 +395,10 @@ public class ServerCore {
         } catch (Exception ignored) {}
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  YÊU CẦU #2: GỬI MAIL → TẠO FILE TRONG THƯ MỤC NGƯỜI NHẬN
+    //  File có ĐÚNG 4 thông tin: IP, Time, Subject, Content
+    // ═══════════════════════════════════════════════════════════════
     private String sendMail(String sender, String fromEmail, String toEmail,
                             String subject, String content,
                             InetAddress senderIP) {
@@ -407,6 +415,7 @@ public class ServerCore {
             String ts = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS").format(new Date());
             String fname = "email_" + sender + "_" + ts + ".txt";
 
+            // ═══ 4 thông tin yêu cầu thầy ═══
             StringBuilder body = new StringBuilder();
             body.append("From          : ").append(fromEmail).append("\n");
             body.append("To            : ").append(toEmail).append("\n");
@@ -415,10 +424,12 @@ public class ServerCore {
             body.append("Tieu de       : ").append(subject).append("\n");
             body.append("Noi dung      : ").append(content).append("\n");
 
+            // Lưu vào inbox người nhận
             File receiverInbox = new File(rDir, "inbox");
             receiverInbox.mkdirs();
             write(new File(receiverInbox, fname), body.toString());
 
+            // Lưu vào sent của người gửi
             File senderSent = new File(senderDir, "sent");
             senderSent.mkdirs();
             write(new File(senderSent, fname), body.toString());

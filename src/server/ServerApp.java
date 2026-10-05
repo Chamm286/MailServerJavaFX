@@ -14,9 +14,6 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.scene.paint.LinearGradient;
-import javafx.scene.paint.Stop;
-import javafx.scene.paint.CycleMethod;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
@@ -134,11 +131,11 @@ public class ServerApp extends Application {
         logo.setIconSize(20);
         logo.setIconColor(Color.WHITE);
         StackPane logoBox = new StackPane(logo);
-        logoBox.setStyle("-fx-background-color: linear-gradient(to bottom right, " + PRIMARY + ", " + CYAN + "); -fx-background-radius:10; -fx-padding:10; -fx-effect: dropshadow(gaussian, " + CYAN + "80, 15, 0, 0, 0);");
+        logoBox.setStyle("-fx-background-color: linear-gradient(to bottom right, " + PRIMARY + ", " + CYAN + "); -fx-background-radius:10; -fx-padding:10;");
 
         Label title = new Label("MAIL SERVER");
-        title.setStyle("-fx-text-fill:white; -fx-font-size:15px; -fx-font-weight:bold; -fx-letter-spacing:1px;");
-        Label sub = new Label("UDP Socket  •  Port 2023");
+        title.setStyle("-fx-text-fill:white; -fx-font-size:15px; -fx-font-weight:bold;");
+        Label sub = new Label("UDP Socket • Port 2023");
         sub.setStyle("-fx-text-fill:" + FG_DIMMER + "; -fx-font-size:10px;");
         VBox titleBox = new VBox(1, title, sub);
 
@@ -161,7 +158,7 @@ public class ServerApp extends Application {
         HBox header = new HBox(12, logoSection, spacer, dirLbl, statusBadge);
         header.setAlignment(Pos.CENTER_LEFT);
         header.setPadding(new Insets(14, 24, 14, 24));
-        header.setStyle("-fx-background-color: linear-gradient(to right, " + BG_PANEL + ", #0F1E3A); -fx-border-color:" + BORDER + "; -fx-border-width:0 0 1 0;");
+        header.setStyle("-fx-background-color:" + BG_PANEL + "; -fx-border-color:" + BORDER + "; -fx-border-width:0 0 1 0;");
         return header;
     }
 
@@ -181,13 +178,13 @@ public class ServerApp extends Application {
         Button startBtn = new Button("▶   START SERVER");
         startBtn.setPrefHeight(42);
         startBtn.setPrefWidth(230);
-        startBtn.setStyle("-fx-background-color: linear-gradient(to right, " + GREEN + ", #059669); -fx-text-fill:white; -fx-font-weight:bold; -fx-font-size:12px; -fx-background-radius:8; -fx-cursor:hand; -fx-effect: dropshadow(gaussian, rgba(16,185,129,0.4), 10, 0, 0, 0);");
+        startBtn.setStyle("-fx-background-color:" + GREEN + "; -fx-text-fill:white; -fx-font-weight:bold; -fx-font-size:12px; -fx-background-radius:8; -fx-cursor:hand;");
 
         Button stopBtn = new Button("■   STOP SERVER");
         stopBtn.setPrefHeight(42);
         stopBtn.setPrefWidth(230);
         stopBtn.setDisable(true);
-        stopBtn.setStyle("-fx-background-color: linear-gradient(to right, " + RED + ", #B91C1C); -fx-text-fill:white; -fx-font-weight:bold; -fx-font-size:12px; -fx-background-radius:8; -fx-cursor:hand;");
+        stopBtn.setStyle("-fx-background-color:" + RED + "; -fx-text-fill:white; -fx-font-weight:bold; -fx-font-size:12px; -fx-background-radius:8; -fx-cursor:hand;");
 
         VBox ctlBox = new VBox(10, ctlTitle, portField, startBtn, stopBtn);
         ctlBox.setPadding(new Insets(14));
@@ -309,7 +306,7 @@ public class ServerApp extends Application {
     }
 
     private String menuBtnActive() {
-        return "-fx-background-color: linear-gradient(to right, " + PRIMARY + ", " + CYAN + "); -fx-background-radius:8; -fx-cursor:hand; -fx-effect: dropshadow(gaussian, " + CYAN + "60, 10, 0, 0, 0);";
+        return "-fx-background-color:" + PRIMARY + "; -fx-background-radius:8; -fx-cursor:hand;";
     }
 
     private VBox buildMainContent() {
@@ -360,7 +357,7 @@ public class ServerApp extends Application {
         HBox.setHgrow(sp, Priority.ALWAYS);
 
         Label liveBadge = new Label("● LIVE");
-        liveBadge.setStyle("-fx-background-color:rgba(16,185,129,0.15); -fx-text-fill:" + GREEN + "; -fx-padding:6 14; -fx-background-radius:20; -fx-font-size:11px; -fx-font-weight:bold; -fx-border-color:" + GREEN + "60; -fx-border-radius:20;");
+        liveBadge.setStyle("-fx-background-color:rgba(16,185,129,0.15); -fx-text-fill:" + GREEN + "; -fx-padding:6 14; -fx-background-radius:20; -fx-font-size:11px; -fx-font-weight:bold;");
         HBox sectionTitle = new HBox(titleBox, sp, liveBadge);
         sectionTitle.setAlignment(Pos.CENTER_LEFT);
 
@@ -376,7 +373,6 @@ public class ServerApp extends Application {
                 bigMetricCard(FontAwesomeSolid.TACHOMETER_ALT, "Avg Latency", lbLatency, YELLOW));
         metrics.setPrefHeight(120);
 
-        // ═══════ LINE CHART CÓ GRADIENT ═══════
         NumberAxis xAxis = new NumberAxis(0, 30, 5);
         NumberAxis yAxis = new NumberAxis(0, 10, 1);
         xAxis.setStyle("-fx-tick-label-fill:" + FG_DIM + ";");
@@ -388,19 +384,14 @@ public class ServerApp extends Application {
         lineChart.setAnimated(false);
         lineChart.setCreateSymbols(false);
         lineChart.setPrefHeight(300);
-        lineChart.setStyle(
-            "-fx-background-color:transparent;" +
-            "-fx-plot-background:transparent;");
-        lineChart.setHorizontalGridLinesVisible(true);
-        lineChart.setVerticalGridLinesVisible(false);
+        lineChart.setStyle("-fx-background-color:transparent; -fx-plot-background:transparent;");
 
         series = new XYChart.Series<>();
         lineChart.getData().add(series);
 
-        VBox lineCard = chartCard("📈  Realtime Traffic", lineChart, PRIMARY);
+        VBox lineCard = chartCard("📈  Realtime Traffic", lineChart);
         HBox.setHgrow(lineCard, Priority.ALWAYS);
 
-        // ═══════ PIE CHART LÀM DONUT ═══════
         pieChart = new PieChart();
         pieChart.setTitle("");
         pieChart.setLegendVisible(true);
@@ -411,7 +402,7 @@ public class ServerApp extends Application {
                 new PieChart.Data("LOGIN", 1),
                 new PieChart.Data("SEND", 1));
 
-        VBox pieCard = chartCard("🍩  Command Distribution", pieChart, CYAN);
+        VBox pieCard = chartCard("🍩  Command Distribution", pieChart);
         pieCard.setPrefWidth(400);
 
         HBox charts = new HBox(16, lineCard, pieCard);
@@ -436,7 +427,7 @@ public class ServerApp extends Application {
         fi.setIconSize(18);
         fi.setIconColor(Color.web(color));
         StackPane iconBox = new StackPane(fi);
-        iconBox.setStyle("-fx-background-color:" + color + "20; -fx-background-radius:10; -fx-padding:10; -fx-border-color:" + color + "40; -fx-border-radius:10;");
+        iconBox.setStyle("-fx-background-color:" + color + "20; -fx-background-radius:10; -fx-padding:10;");
 
         Label l = new Label(label);
         l.setStyle("-fx-font-size:12px; -fx-text-fill:" + FG_DIM + ";");
@@ -448,33 +439,23 @@ public class ServerApp extends Application {
 
         VBox card = new VBox(10, titleRow, valueLbl);
         card.setPadding(new Insets(18));
-        card.setStyle(
-            "-fx-background-color: linear-gradient(to bottom right, " + BG_PANEL + ", #0F1E3A);" +
-            "-fx-background-radius:14;" +
-            "-fx-border-color:" + color + "40;" +
-            "-fx-border-radius:14;" +
-            "-fx-effect: dropshadow(gaussian, " + color + "40, 15, 0, 0, 0);");
+        card.setStyle("-fx-background-color:" + BG_PANEL + "; -fx-background-radius:14; -fx-border-color:" + BORDER_SOFT + "; -fx-border-radius:14;");
         HBox.setHgrow(card, Priority.ALWAYS);
         return card;
     }
 
-    private VBox chartCard(String title, Node chart, String accentColor) {
+    private VBox chartCard(String title, Node chart) {
         Label t = new Label(title);
         t.setStyle("-fx-font-size:13px; -fx-font-weight:bold; -fx-text-fill:" + FG + ";");
         VBox v = new VBox(10, t, chart);
         v.setPadding(new Insets(16));
-        v.setStyle(
-            "-fx-background-color: linear-gradient(to bottom right, " + BG_PANEL + ", #0F1E3A);" +
-            "-fx-background-radius:14;" +
-            "-fx-border-color:" + accentColor + "40;" +
-            "-fx-border-radius:14;" +
-            "-fx-effect: dropshadow(gaussian, " + accentColor + "30, 15, 0, 0, 0);");
+        v.setStyle("-fx-background-color:" + BG_PANEL + "; -fx-background-radius:14; -fx-border-color:" + BORDER_SOFT + "; -fx-border-radius:14;");
         return v;
     }
 
     private HBox cmdBadge(String name, Label valueLbl, String color) {
         Label nameLbl = new Label(name);
-        nameLbl.setStyle("-fx-font-size:10px; -fx-font-weight:bold; -fx-text-fill:" + color + "; -fx-background-color:" + color + "20; -fx-padding:5 12; -fx-background-radius:6; -fx-border-color:" + color + "40; -fx-border-radius:6;");
+        nameLbl.setStyle("-fx-font-size:10px; -fx-font-weight:bold; -fx-text-fill:" + color + "; -fx-background-color:" + color + "20; -fx-padding:5 12; -fx-background-radius:6;");
         valueLbl.setStyle("-fx-font-size:26px; -fx-font-weight:bold; -fx-text-fill:" + FG + ";");
         VBox v = new VBox(8, nameLbl, valueLbl);
         v.setAlignment(Pos.CENTER);
@@ -494,7 +475,7 @@ public class ServerApp extends Application {
         HBox.setHgrow(sp, Priority.ALWAYS);
 
         Button refreshBtn = new Button("Refresh");
-        refreshBtn.setStyle("-fx-background-color: linear-gradient(to right, " + PRIMARY + ", " + CYAN + "); -fx-text-fill:white; -fx-font-weight:bold; -fx-background-radius:8; -fx-padding:10 18; -fx-cursor:hand; -fx-effect: dropshadow(gaussian, " + CYAN + "60, 10, 0, 0, 0);");
+        refreshBtn.setStyle("-fx-background-color:" + PRIMARY + "; -fx-text-fill:white; -fx-font-weight:bold; -fx-background-radius:8; -fx-padding:10 18; -fx-cursor:hand;");
         refreshBtn.setOnAction(e -> refreshOnline());
 
         HBox sectionTitle = new HBox(titleBox, sp, refreshBtn);
@@ -567,7 +548,7 @@ public class ServerApp extends Application {
         HBox.setHgrow(sp, Priority.ALWAYS);
 
         Button refreshBtn = new Button("Refresh");
-        refreshBtn.setStyle("-fx-background-color: linear-gradient(to right, " + PRIMARY + ", " + CYAN + "); -fx-text-fill:white; -fx-font-weight:bold; -fx-background-radius:8; -fx-padding:10 18; -fx-cursor:hand;");
+        refreshBtn.setStyle("-fx-background-color:" + PRIMARY + "; -fx-text-fill:white; -fx-font-weight:bold; -fx-background-radius:8; -fx-padding:10 18; -fx-cursor:hand;");
         refreshBtn.setOnAction(e -> refreshAccounts());
 
         HBox sectionTitle = new HBox(titleBox, sp, refreshBtn);
@@ -644,7 +625,7 @@ public class ServerApp extends Application {
         HBox.setHgrow(sp, Priority.ALWAYS);
 
         Button refreshBtn = new Button("Refresh");
-        refreshBtn.setStyle("-fx-background-color: linear-gradient(to right, " + PRIMARY + ", " + CYAN + "); -fx-text-fill:white; -fx-font-weight:bold; -fx-background-radius:8; -fx-padding:10 18; -fx-cursor:hand;");
+        refreshBtn.setStyle("-fx-background-color:" + PRIMARY + "; -fx-text-fill:white; -fx-font-weight:bold; -fx-background-radius:8; -fx-padding:10 18; -fx-cursor:hand;");
         refreshBtn.setOnAction(e -> refreshMails());
 
         HBox sectionTitle = new HBox(titleBox, sp, refreshBtn);
@@ -768,7 +749,6 @@ public class ServerApp extends Application {
                 totalRequests++;
                 lbTotalReq.setText(String.valueOf(totalRequests));
                 lbReqPerSec.setText(String.valueOf((int)(Math.random()*3+1)));
-                lbClients.setText(String.valueOf(1 + (int)(Math.random()*2)));
 
                 if (s.contains("REGISTER")) {
                     totalRegisters++; lbReg.setText(String.valueOf(totalRegisters));
@@ -800,7 +780,7 @@ public class ServerApp extends Application {
             HBox h = new HBox(ic, lbl);
             h.setAlignment(Pos.CENTER_LEFT);
             h.setPadding(new Insets(12, 18, 12, 14));
-            h.setStyle("-fx-background-color: linear-gradient(to right, " + color + ", " + color + "CC); -fx-background-radius:10; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 15, 0, 0, 4);");
+            h.setStyle("-fx-background-color:" + color + "; -fx-background-radius:10; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 15, 0, 0, 4);");
             h.setOpacity(0);
 
             toastBox.getChildren().add(h);

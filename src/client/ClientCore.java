@@ -11,6 +11,7 @@ public class ClientCore {
 
     public ClientCore() throws Exception {
         socket = new DatagramSocket();
+        socket.setSoTimeout(5000);
     }
 
     public void setHost(String host) { this.host = host; }
@@ -22,9 +23,7 @@ public class ClientCore {
         byte[] out = req.getBytes("UTF-8");
         socket.send(new DatagramPacket(out, out.length, addr, PORT));
 
-        socket.setSoTimeout(5000);
-
-        byte[] in = new byte[8192];
+        byte[] in = new byte[16384];
         DatagramPacket rp = new DatagramPacket(in, in.length);
         socket.receive(rp);
 

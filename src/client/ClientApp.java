@@ -107,11 +107,10 @@ public class ClientApp extends Application {
     }
 
     // ==================================================
-    //         AUTH PAGE — ĐƠN GIẢN, SẠCH SẼ
+    //         AUTH PAGE — CÓ Ô NHẬP IP NỔI BẬT
     // ==================================================
     private VBox buildAuthPage() {
 
-        // ═══ LOGO ═══
         FontIcon logoIc = new FontIcon(FontAwesomeSolid.ENVELOPE);
         logoIc.setIconSize(32);
         logoIc.setIconColor(Color.WHITE);
@@ -133,18 +132,60 @@ public class ClientApp extends Application {
         VBox header = new VBox(10, logoBox, appName, appSub);
         header.setAlignment(Pos.CENTER);
 
+        // ═══════════════════════════════════════════════════════════
+        //  Ô NHẬP SERVER IP — NỔI BẬT, ĐẶT Ở ĐẦU FORM
+        // ═══════════════════════════════════════════════════════════
+        Label ipTitle = new Label("🌐  SERVER IP — KẾT NỐI ĐẾN SERVER");
+        ipTitle.setStyle(
+            "-fx-text-fill:" + CYAN + ";" +
+            "-fx-font-size:12px;" +
+            "-fx-font-weight:bold;");
+
+        Label ipHint = new Label("Nhập IP của máy đang chạy Server (VD: 192.168.1.10 hoặc localhost)");
+        ipHint.setStyle("-fx-text-fill:" + FG_DIMMER + "; -fx-font-size:10px;");
+
+        serverIpField = cleanField(FontAwesomeSolid.GLOBE, "VD: 192.168.1.10 hoặc localhost");
+        serverIpField.setText("localhost");
+        serverIpField.setPrefHeight(46);
+        HBox.setHgrow(serverIpField, Priority.ALWAYS);
+
+        Button testBtn = new Button();
+        FontIcon testIc = new FontIcon(FontAwesomeSolid.PLUG);
+        testIc.setIconSize(13);
+        testIc.setIconColor(Color.WHITE);
+        Label testLbl = new Label("  KẾT NỐI");
+        testLbl.setGraphic(testIc);
+        testLbl.setStyle("-fx-text-fill:white; -fx-font-weight:bold; -fx-font-size:12px;");
+        testBtn.setGraphic(testLbl);
+        testBtn.setPrefHeight(46);
+        testBtn.setPrefWidth(140);
+        testBtn.setStyle("-fx-background-color:" + GREEN + "; -fx-background-radius:10; -fx-cursor:hand;");
+        testBtn.setOnMouseEntered(e -> testBtn.setStyle("-fx-background-color:#059669; -fx-background-radius:10; -fx-cursor:hand;"));
+        testBtn.setOnMouseExited(e -> testBtn.setStyle("-fx-background-color:" + GREEN + "; -fx-background-radius:10; -fx-cursor:hand;"));
+        testBtn.setOnAction(e -> testConnection());
+
+        HBox ipRow = new HBox(10, serverIpField, testBtn);
+        ipRow.setAlignment(Pos.CENTER);
+
+        VBox ipBox = new VBox(6, ipTitle, ipHint, ipRow);
+        ipBox.setAlignment(Pos.CENTER_LEFT);
+        ipBox.setPadding(new Insets(14, 18, 14, 18));
+        ipBox.setStyle(
+            "-fx-background-color: rgba(6,182,212,0.08);" +
+            "-fx-background-radius:12;" +
+            "-fx-border-color:" + CYAN + "60;" +
+            "-fx-border-radius:12;");
+
         // ═══ TABS ═══
         Button tabLogin    = authTab("Đăng nhập", true);
         Button tabRegister = authTab("Tạo tài khoản", false);
         HBox tabs = new HBox(4, tabLogin, tabRegister);
         tabs.setAlignment(Pos.CENTER);
-        tabs.setPadding(new Insets(0, 0, 4, 0));
+        tabs.setPadding(new Insets(8, 0, 4, 0));
 
         // ═══ LOGIN FORM ═══
         loginUserField = cleanField(FontAwesomeSolid.USER, "Tên đăng nhập");
         loginPassField = cleanPassword(FontAwesomeSolid.LOCK, "Mật khẩu");
-        serverIpField  = cleanField(FontAwesomeSolid.GLOBE, "Server IP (localhost)");
-        serverIpField.setText("localhost");
 
         Button loginBtn = gradientBtn("ĐĂNG NHẬP", PRIMARY, CYAN);
         loginBtn.setPrefWidth(360);
@@ -156,7 +197,6 @@ public class ClientApp extends Application {
         VBox loginForm = new VBox(14,
                 labeledInput("Tên đăng nhập", loginUserField),
                 labeledInput("Mật khẩu", loginPassField),
-                labeledInput("Server IP", serverIpField),
                 new Region(),
                 loginBtn, hintLogin);
         loginForm.setAlignment(Pos.CENTER);
@@ -175,12 +215,9 @@ public class ClientApp extends Application {
         regPassField        = cleanPassword(FontAwesomeSolid.LOCK, "Mật khẩu");
         regPassConfirmField = cleanPassword(FontAwesomeSolid.LOCK, "Xác nhận mật khẩu");
 
-        TextField regIpField = cleanField(FontAwesomeSolid.GLOBE, "Server IP (localhost)");
-        regIpField.setText("localhost");
-
         Button registerBtn = gradientBtn("TẠO TÀI KHOẢN", GREEN, CYAN);
         registerBtn.setPrefWidth(360);
-        registerBtn.setOnAction(e -> doRegister(regIpField));
+        registerBtn.setOnAction(e -> doRegister());
 
         Label hintReg = new Label("Mỗi tài khoản có email dạng username@gmail.com");
         hintReg.setStyle("-fx-text-fill:" + FG_DIMMER + "; -fx-font-size:11px;");
@@ -190,7 +227,6 @@ public class ClientApp extends Application {
                 labeledInput("Email", regEmailField),
                 labeledInput("Mật khẩu", regPassField),
                 labeledInput("Xác nhận mật khẩu", regPassConfirmField),
-                labeledInput("Server IP", regIpField),
                 new Region(),
                 registerBtn, hintReg);
         registerForm.setAlignment(Pos.CENTER);
@@ -212,10 +248,10 @@ public class ClientApp extends Application {
         });
 
         // ═══ CARD ═══
-        VBox card = new VBox(12, tabs, loginForm, registerForm);
+        VBox card = new VBox(12, ipBox, tabs, loginForm, registerForm);
         card.setAlignment(Pos.TOP_CENTER);
-        card.setPadding(new Insets(28, 40, 28, 40));
-        card.setMaxWidth(460);
+        card.setPadding(new Insets(22, 36, 28, 36));
+        card.setMaxWidth(480);
         card.setStyle(
             "-fx-background-color:" + BG_PANEL + ";" +
             "-fx-background-radius:16;" +
@@ -223,10 +259,9 @@ public class ClientApp extends Application {
             "-fx-border-radius:16;" +
             "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 30, 0, 0, 8);");
 
-        VBox page = new VBox(28, header, card);
+        VBox page = new VBox(20, header, card);
         page.setAlignment(Pos.CENTER);
-        page.setStyle(
-            "-fx-background-color: linear-gradient(to bottom right, #0B1220, #16213E, #0B1220);");
+        page.setStyle("-fx-background-color: linear-gradient(to bottom right, #0B1220, #16213E, #0B1220);");
         return page;
     }
 
@@ -353,21 +388,42 @@ public class ClientApp extends Application {
         Button b = new Button();
         b.setGraphic(l);
         b.setPrefHeight(46);
-        b.setStyle(
-            "-fx-background-color: linear-gradient(to right, " + c1 + ", " + c2 + ");" +
-            "-fx-background-radius:10;" +
-            "-fx-cursor:hand;");
+        b.setStyle("-fx-background-color: linear-gradient(to right, " + c1 + ", " + c2 + "); -fx-background-radius:10; -fx-cursor:hand;");
 
-        b.setOnMouseEntered(e -> b.setStyle(
-            "-fx-background-color: linear-gradient(to right, " + c2 + ", " + c1 + ");" +
-            "-fx-background-radius:10;" +
-            "-fx-cursor:hand;"));
-        b.setOnMouseExited(e -> b.setStyle(
-            "-fx-background-color: linear-gradient(to right, " + c1 + ", " + c2 + ");" +
-            "-fx-background-radius:10;" +
-            "-fx-cursor:hand;"));
+        b.setOnMouseEntered(e -> b.setStyle("-fx-background-color: linear-gradient(to right, " + c2 + ", " + c1 + "); -fx-background-radius:10; -fx-cursor:hand;"));
+        b.setOnMouseExited(e -> b.setStyle("-fx-background-color: linear-gradient(to right, " + c1 + ", " + c2 + "); -fx-background-radius:10; -fx-cursor:hand;"));
 
         return b;
+    }
+
+    // ==================================================
+    //         TEST CONNECTION
+    // ==================================================
+    private void testConnection() {
+        String ip = serverIpField.getText().trim();
+        if (ip.isEmpty()) {
+            showAlert("Vui lòng nhập Server IP!");
+            return;
+        }
+
+        core.setHost(ip);
+
+        try {
+            String resp = core.send("PING");
+            if (resp.startsWith("OK")) {
+                showAlert("KẾT NỐI THÀNH CÔNG!\n\nServer: " + ip + ":2023\nTrạng thái: OK");
+            } else {
+                showAlert("Server phản hồi: " + resp);
+            }
+        } catch (java.net.SocketTimeoutException te) {
+            showAlert("KHÔNG KẾT NỐI ĐƯỢC!\n\nIP: " + ip + ":2023\n\nKiểm tra:\n" +
+                      "1. Server đã bấm START chưa?\n" +
+                      "2. IP đúng máy server chưa?\n" +
+                      "3. Cùng WiFi/LAN chưa?\n" +
+                      "4. Firewall đã mở port 2023 chưa?");
+        } catch (Exception e) {
+            showAlert("Lỗi kết nối: " + e.getMessage());
+        }
     }
 
     // ==================================================
@@ -615,7 +671,7 @@ public class ClientApp extends Application {
                 } else {
                     FontIcon starIc = new FontIcon(item.starred ? FontAwesomeSolid.STAR : FontAwesomeSolid.ENVELOPE);
                     starIc.setIconSize(14);
-                    starIc.setIconColor(Color.web(item.starred ? YELLOW : (item.from.contains("server") ? CYAN : PRIMARY)));
+                    starIc.setIconColor(Color.web(item.starred ? YELLOW : PRIMARY));
 
                     Label from = new Label(item.from);
                     from.setStyle("-fx-text-fill:" + FG + "; -fx-font-size:13px; -fx-font-weight:bold;");
@@ -875,9 +931,6 @@ public class ClientApp extends Application {
         else contactsList.getItems().setAll(allContacts);
     }
 
-    // ==================================================
-    //         COMPOSE MODAL
-    // ==================================================
     private void openCompose(String to, String subject, String content) {
         FontIcon ic = new FontIcon(FontAwesomeSolid.PAPER_PLANE);
         ic.setIconSize(18);
@@ -1034,18 +1087,9 @@ public class ClientApp extends Application {
         sendBtn.setGraphic(sendLbl);
         sendBtn.setPrefHeight(42);
         sendBtn.setPrefWidth(140);
-        sendBtn.setStyle(
-            "-fx-background-color: linear-gradient(to right, " + PRIMARY + ", " + CYAN + ");" +
-            "-fx-background-radius:21;" +
-            "-fx-cursor:hand;");
-        sendBtn.setOnMouseEntered(e -> sendBtn.setStyle(
-            "-fx-background-color: linear-gradient(to right, " + CYAN + ", " + PRIMARY + ");" +
-            "-fx-background-radius:21;" +
-            "-fx-cursor:hand;"));
-        sendBtn.setOnMouseExited(e -> sendBtn.setStyle(
-            "-fx-background-color: linear-gradient(to right, " + PRIMARY + ", " + CYAN + ");" +
-            "-fx-background-radius:21;" +
-            "-fx-cursor:hand;"));
+        sendBtn.setStyle("-fx-background-color: linear-gradient(to right, " + PRIMARY + ", " + CYAN + "); -fx-background-radius:21; -fx-cursor:hand;");
+        sendBtn.setOnMouseEntered(e -> sendBtn.setStyle("-fx-background-color: linear-gradient(to right, " + CYAN + ", " + PRIMARY + "); -fx-background-radius:21; -fx-cursor:hand;"));
+        sendBtn.setOnMouseExited(e -> sendBtn.setStyle("-fx-background-color: linear-gradient(to right, " + PRIMARY + ", " + CYAN + "); -fx-background-radius:21; -fx-cursor:hand;"));
 
         sendBtn.setOnAction(e -> {
             String t = toF.getText().trim();
@@ -1174,9 +1218,8 @@ public class ClientApp extends Application {
         }
     }
 
-    private void doRegister(TextField ipField) {
-        String ip = ipField.getText().trim();
-        if (!ip.isEmpty()) core.setHost(ip);
+    private void doRegister() {
+        applyServerHost();
 
         String u = regUserField.getText().trim();
         String p = regPassField.getText().trim();
