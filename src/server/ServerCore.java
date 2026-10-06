@@ -7,7 +7,6 @@ import java.util.*;
 
 public class ServerCore {
 
-    // ═══════ CẤU HÌNH SERVER ═══════
     public static final String SERVER_DIR = "F:/server_mail";
     public static final int    PORT       = 2023;
 
@@ -55,7 +54,6 @@ public class ServerCore {
                     String req = new String(recvPkt.getData(), 0, recvPkt.getLength(), "UTF-8").trim();
                     logger.log("[RECV] " + ip.getHostAddress() + ":" + portCli + " | " + shorten(req));
 
-                    // Track online
                     if (req.startsWith("LOGIN|")) {
                         String[] parts = req.split("\\|", -1);
                         if (parts.length >= 2) {
@@ -121,11 +119,7 @@ public class ServerCore {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    //  YÊU CẦU #1: ĐĂNG KÝ → TẠO THƯ MỤC TRÊN SERVER
-    //  Thư mục: F:\server_mail\<username>\
-    //  Trong đó có: user.txt, pass.txt, date.txt, new_email.txt
-    // ═══════════════════════════════════════════════════════════════
+    // YÊU CẦU #1: ĐĂNG KÝ
     private String register(String user, String pass) {
         try {
             File dir = new File(SERVER_DIR, user);
@@ -144,7 +138,7 @@ public class ServerCore {
             write(new File(dir, "email.txt"), email);
             write(new File(dir, "starred.txt"), "");
 
-            // new_email.txt — chỉ chứa thông tin user (không có Thank you)
+            // new_email.txt — chỉ có 3 dòng info
             write(new File(dir, "new_email.txt"),
                   "User    : " + user + "\n" +
                   "Email   : " + email + "\n" +
@@ -157,9 +151,7 @@ public class ServerCore {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    //  YÊU CẦU #3: LOGIN → TRẢ VỀ DANH SÁCH TÊN FILE
-    // ═══════════════════════════════════════════════════════════════
+    // YÊU CẦU #3: LOGIN → DANH SÁCH TÊN FILE
     private String login(String user, String pass) {
         try {
             File dir = new File(SERVER_DIR, user);
@@ -177,10 +169,7 @@ public class ServerCore {
             sb.append("EMAIL|").append(myEmail).append("\n");
             sb.append("SECTION|INBOX\n");
 
-            // Danh sách file gốc của account
             appendAccountFiles(sb, dir);
-
-            // Danh sách mail trong inbox
             appendMailList(sb, new File(dir, "inbox"), user, dir, "INBOX");
 
             return sb.toString();
@@ -395,10 +384,7 @@ public class ServerCore {
         } catch (Exception ignored) {}
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    //  YÊU CẦU #2: GỬI MAIL → TẠO FILE TRONG THƯ MỤC NGƯỜI NHẬN
-    //  File có ĐÚNG 4 thông tin: IP, Time, Subject, Content
-    // ═══════════════════════════════════════════════════════════════
+    // YÊU CẦU #2: GỬI MAIL
     private String sendMail(String sender, String fromEmail, String toEmail,
                             String subject, String content,
                             InetAddress senderIP) {
@@ -415,7 +401,6 @@ public class ServerCore {
             String ts = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS").format(new Date());
             String fname = "email_" + sender + "_" + ts + ".txt";
 
-            // ═══ 4 thông tin yêu cầu thầy ═══
             StringBuilder body = new StringBuilder();
             body.append("From          : ").append(fromEmail).append("\n");
             body.append("To            : ").append(toEmail).append("\n");
@@ -424,12 +409,10 @@ public class ServerCore {
             body.append("Tieu de       : ").append(subject).append("\n");
             body.append("Noi dung      : ").append(content).append("\n");
 
-            // Lưu vào inbox người nhận
             File receiverInbox = new File(rDir, "inbox");
             receiverInbox.mkdirs();
             write(new File(receiverInbox, fname), body.toString());
 
-            // Lưu vào sent của người gửi
             File senderSent = new File(senderDir, "sent");
             senderSent.mkdirs();
             write(new File(senderSent, fname), body.toString());
