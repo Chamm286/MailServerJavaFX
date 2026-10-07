@@ -11,7 +11,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
@@ -23,13 +22,11 @@ import java.util.Enumeration;
 
 public class ClientApp extends Application {
 
-    // ═══════════ PROFESSIONAL LIGHT THEME ═══════════
     private static final String BG_MAIN     = "#F7F9FC";
     private static final String BG_WHITE    = "#FFFFFF";
     private static final String BG_HEADER   = "#0D47A1";
     private static final String BG_HEADER_2 = "#1565C0";
     private static final String BG_HOVER    = "#EFF6FF";
-    private static final String BG_ACTIVE   = "#DBEAFE";
     private static final String BORDER      = "#E2E8F0";
     private static final String BORDER_SOFT = "#CBD5E1";
     private static final String TEXT_DARK   = "#0F172A";
@@ -38,11 +35,8 @@ public class ClientApp extends Application {
     private static final String BLUE        = "#1976D2";
     private static final String BLUE_BG     = "#DBEAFE";
     private static final String GREEN       = "#10B981";
-    private static final String GREEN_BG    = "#D1FAE5";
     private static final String YELLOW      = "#F59E0B";
     private static final String RED         = "#EF4444";
-    private static final String PURPLE      = "#8B5CF6";
-    private static final String CYAN        = "#06B6D4";
 
     private ClientCore core;
     private String currentUser = null;
@@ -50,7 +44,7 @@ public class ClientApp extends Application {
     private String currentPass = null;
     private String myIP = "unknown";
 
-    private TextField     serverIpField, loginUserField, regUserField, regEmailField;
+    private TextField     loginUserField, regUserField, regEmailField;
     private PasswordField loginPassField, regPassField, regPassConfirmField;
 
     private ListView<MailItem> mailList;
@@ -58,13 +52,11 @@ public class ClientApp extends Application {
     private TextArea           readerBody;
     private MailItem           selectedMail;
 
-    private Label      avatarLabel, userEmailLabel, myIpLabel, statusLabel;
+    private Label      avatarLabel, userEmailLabel, serverIpLabel, myIpLabel;
     private TextArea   activityLog;
     private StackPane  rootStack, centerContent;
     private VBox       authPage;
     private BorderPane mainPage;
-    private Button     currentSideBtn = null;
-    private String     currentFolder = "INBOX";
     private StackPane  modalLayer;
     private ListView<String> contactsList;
     private java.util.List<String> allContacts = new java.util.ArrayList<>();
@@ -102,7 +94,7 @@ public class ClientApp extends Application {
         stage.setScene(scene);
         stage.show();
 
-        autoRefreshTimer = new Timeline(new KeyFrame(Duration.seconds(3), ev -> {
+        autoRefreshTimer = new Timeline(new KeyFrame(Duration.seconds(2), ev -> {
             if (currentUser != null && currentPass != null && mailList != null && !isSending) {
                 silentRefresh();
             }
@@ -117,12 +109,25 @@ public class ClientApp extends Application {
             while (nis.hasMoreElements()) {
                 NetworkInterface ni = nis.nextElement();
                 if (ni.isLoopback() || !ni.isUp()) continue;
+
+                String name    = ni.getName()        != null ? ni.getName().toLowerCase()        : "";
+                String display = ni.getDisplayName() != null ? ni.getDisplayName().toLowerCase() : "";
+
+                if (name.contains("vbox") || name.contains("vmnet")
+                    || name.contains("bluetooth") || name.contains("virtual")
+                    || name.contains("docker") || name.contains("hyper-v")
+                    || display.contains("virtualbox") || display.contains("vmware")
+                    || display.contains("bluetooth") || display.contains("hyper-v")
+                    || display.contains("virtual")) continue;
+
                 Enumeration<InetAddress> addrs = ni.getInetAddresses();
                 while (addrs.hasMoreElements()) {
                     InetAddress addr = addrs.nextElement();
-                    if (addr.isLoopbackAddress()) continue;
+                    if (addr.isLoopbackAddress() || addr.isLinkLocalAddress()) continue;
                     String ip = addr.getHostAddress();
-                    if (ip.contains(".") && !ip.startsWith("169.254")) return ip;
+                    if (ip.contains(".") && !ip.startsWith("169.254") && !ip.startsWith("192.168.56.") && !ip.startsWith("127.")) {
+                        return ip;
+                    }
                 }
             }
             return InetAddress.getLocalHost().getHostAddress();
@@ -138,11 +143,9 @@ public class ClientApp extends Application {
     }
 
     // ==================================================
-    //         AUTH PAGE
+    //              AUTH PAGE
     // ==================================================
     private VBox buildAuthPage() {
-
-        // ═══ HEADER XANH ═══
         FontIcon logoIc = new FontIcon(FontAwesomeSolid.ENVELOPE);
         logoIc.setIconSize(26);
         logoIc.setIconColor(Color.WHITE);
@@ -161,68 +164,31 @@ public class ClientApp extends Application {
         Region sp0 = new Region();
         HBox.setHgrow(sp0, Priority.ALWAYS);
 
-        Label myIpBadge = new Label("● IP máy bạn: " + myIP);
-        myIpBadge.setStyle(
-            "-fx-text-fill:white;" +
-            "-fx-font-size:12px;" +
-            "-fx-font-weight:bold;" +
-            "-fx-background-color:rgba(16,185,129,0.55);" +
-            "-fx-padding:8 16;" +
-            "-fx-background-radius:20;");
+        Label serverBadge = new Label("● Server: " + core.getServerIP() + ":" + core.getPort());
+        serverBadge.setStyle("-fx-text-fill:white; -fx-font-size:11px; -fx-font-weight:bold; -fx-background-color:rgba(16,185,129,0.6); -fx-padding:8 16; -fx-background-radius:20;");
 
-        HBox authHeader = new HBox(14, titleSection, sp0, myIpBadge);
+        Label myIpBadge = new Label("● IP máy bạn: " + myIP);
+        myIpBadge.setStyle("-fx-text-fill:white; -fx-font-size:11px; -fx-font-weight:bold; -fx-background-color:rgba(6,182,212,0.55); -fx-padding:8 16; -fx-background-radius:20;");
+
+        HBox badges = new HBox(10, serverBadge, myIpBadge);
+        badges.setAlignment(Pos.CENTER_RIGHT);
+
+        HBox authHeader = new HBox(14, titleSection, sp0, badges);
         authHeader.setAlignment(Pos.CENTER_LEFT);
         authHeader.setPadding(new Insets(20, 28, 20, 28));
         authHeader.setStyle("-fx-background-color: linear-gradient(to right, " + BG_HEADER + ", " + BG_HEADER_2 + ");");
 
-        // ═══ FORM CARD ═══
-        Label ipTitle = new Label("🌐  SERVER IP — KẾT NỐI ĐẾN SERVER");
-        ipTitle.setStyle("-fx-text-fill:" + BLUE + "; -fx-font-size:12px; -fx-font-weight:bold;");
-
-        Label ipHint = new Label("Nhập IP của máy chạy Server (VD: 192.168.1.10 hoặc localhost)");
-        ipHint.setStyle("-fx-text-fill:" + TEXT_DIM + "; -fx-font-size:10px;");
-
-        serverIpField = lightField(FontAwesomeSolid.GLOBE, "VD: 192.168.1.10 hoặc localhost");
-        serverIpField.setText("localhost");
-        serverIpField.setPrefHeight(46);
-        HBox.setHgrow(serverIpField, Priority.ALWAYS);
-
-        Button testBtn = new Button();
-        FontIcon testIc = new FontIcon(FontAwesomeSolid.PLUG);
-        testIc.setIconSize(13);
-        testIc.setIconColor(Color.WHITE);
-        Label testLbl = new Label("  KẾT NỐI");
-        testLbl.setGraphic(testIc);
-        testLbl.setStyle("-fx-text-fill:white; -fx-font-weight:bold; -fx-font-size:12px;");
-        testBtn.setGraphic(testLbl);
-        testBtn.setPrefHeight(46);
-        testBtn.setPrefWidth(140);
-        testBtn.setStyle("-fx-background-color:" + GREEN + "; -fx-background-radius:10; -fx-cursor:hand;");
-        testBtn.setOnMouseEntered(e -> testBtn.setStyle("-fx-background-color:#059669; -fx-background-radius:10; -fx-cursor:hand;"));
-        testBtn.setOnMouseExited(e -> testBtn.setStyle("-fx-background-color:" + GREEN + "; -fx-background-radius:10; -fx-cursor:hand;"));
-        testBtn.setOnAction(e -> testConnection());
-
-        HBox ipRow = new HBox(10, serverIpField, testBtn);
-        ipRow.setAlignment(Pos.CENTER);
-
-        VBox ipBox = new VBox(6, ipTitle, ipHint, ipRow);
-        ipBox.setAlignment(Pos.CENTER_LEFT);
-        ipBox.setPadding(new Insets(14, 18, 14, 18));
-        ipBox.setStyle("-fx-background-color:" + BG_HOVER + "; -fx-background-radius:12; -fx-border-color:" + BLUE + "40; -fx-border-radius:12;");
-
-        // Tabs
         Button tabLogin    = authTab("Đăng nhập", true);
         Button tabRegister = authTab("Tạo tài khoản", false);
         HBox tabs = new HBox(4, tabLogin, tabRegister);
         tabs.setAlignment(Pos.CENTER);
-        tabs.setPadding(new Insets(8, 0, 4, 0));
 
-        // Login
         loginUserField = lightField(FontAwesomeSolid.USER, "Tên đăng nhập");
-        loginPassField = lightPassword(FontAwesomeSolid.LOCK, "Mật khẩu");
+        loginPassField = new PasswordField();
+        VBox loginPassWrapper = passwordFieldWrapper(loginPassField, "Mật khẩu");
 
         Button loginBtn = primaryBtn("ĐĂNG NHẬP", BLUE, "#1565C0");
-        loginBtn.setPrefWidth(360);
+        loginBtn.setPrefWidth(380);
         loginBtn.setOnAction(e -> doLogin());
 
         Label hintLogin = new Label("Chưa có tài khoản? Chuyển sang tab \"Tạo tài khoản\"");
@@ -230,13 +196,12 @@ public class ClientApp extends Application {
 
         VBox loginForm = new VBox(14,
                 labeledInput("Tên đăng nhập", loginUserField),
-                labeledInput("Mật khẩu", loginPassField),
+                labeledInput("Mật khẩu", loginPassWrapper),
                 new Region(),
                 loginBtn, hintLogin);
         loginForm.setAlignment(Pos.CENTER);
         loginForm.setPadding(new Insets(20, 0, 0, 0));
 
-        // Register
         regUserField  = lightField(FontAwesomeSolid.USER_PLUS, "Tên đăng nhập mới");
         regEmailField = lightField(FontAwesomeSolid.AT, "Email tự động");
         regEmailField.setDisable(true);
@@ -246,11 +211,13 @@ public class ClientApp extends Application {
             else regEmailField.setText(val.trim() + "@gmail.com");
         });
 
-        regPassField        = lightPassword(FontAwesomeSolid.LOCK, "Mật khẩu");
-        regPassConfirmField = lightPassword(FontAwesomeSolid.LOCK, "Xác nhận mật khẩu");
+        regPassField        = new PasswordField();
+        regPassConfirmField = new PasswordField();
+        VBox regPassWrapper        = passwordFieldWrapper(regPassField,        "Mật khẩu");
+        VBox regPassConfirmWrapper = passwordFieldWrapper(regPassConfirmField, "Xác nhận mật khẩu");
 
         Button registerBtn = primaryBtn("TẠO TÀI KHOẢN", GREEN, "#059669");
-        registerBtn.setPrefWidth(360);
+        registerBtn.setPrefWidth(380);
         registerBtn.setOnAction(e -> doRegister());
 
         Label hintReg = new Label("Mỗi tài khoản có email dạng username@gmail.com");
@@ -259,8 +226,8 @@ public class ClientApp extends Application {
         VBox registerForm = new VBox(14,
                 labeledInput("Tên đăng nhập", regUserField),
                 labeledInput("Email", regEmailField),
-                labeledInput("Mật khẩu", regPassField),
-                labeledInput("Xác nhận mật khẩu", regPassConfirmField),
+                labeledInput("Mật khẩu", regPassWrapper),
+                labeledInput("Xác nhận mật khẩu", regPassConfirmWrapper),
                 new Region(),
                 registerBtn, hintReg);
         registerForm.setAlignment(Pos.CENTER);
@@ -281,13 +248,16 @@ public class ClientApp extends Application {
             registerForm.setVisible(true); registerForm.setManaged(true);
         });
 
-        VBox card = new VBox(12, ipBox, tabs, loginForm, registerForm);
+        VBox card = new VBox(12, tabs, loginForm, registerForm);
         card.setAlignment(Pos.TOP_CENTER);
-        card.setPadding(new Insets(24, 38, 30, 38));
-        card.setMaxWidth(480);
+        card.setPadding(new Insets(28, 42, 32, 42));
+        card.setMaxWidth(500);
         card.setStyle("-fx-background-color:" + BG_WHITE + "; -fx-background-radius:16; -fx-border-color:" + BORDER + "; -fx-border-radius:16; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 20, 0, 0, 4);");
 
-        VBox cardWrap = new VBox(card);
+        Label serverInfo = new Label("🌐 Server IP: " + core.getServerIP() + " • Port: " + core.getPort());
+        serverInfo.setStyle("-fx-text-fill:" + BLUE + "; -fx-font-size:11px; -fx-font-weight:bold; -fx-background-color:" + BLUE_BG + "; -fx-padding:6 14; -fx-background-radius:20;");
+
+        VBox cardWrap = new VBox(16, card, serverInfo);
         cardWrap.setAlignment(Pos.CENTER);
         cardWrap.setPadding(new Insets(40));
         VBox.setVgrow(cardWrap, Priority.ALWAYS);
@@ -296,6 +266,74 @@ public class ClientApp extends Application {
         page.setStyle("-fx-background-color:" + BG_MAIN + ";");
         VBox.setVgrow(cardWrap, Priority.ALWAYS);
         return page;
+    }
+
+    private VBox passwordFieldWrapper(PasswordField pf, String prompt) {
+        FontIcon lockIc = new FontIcon(FontAwesomeSolid.LOCK);
+        lockIc.setIconSize(13);
+        lockIc.setIconColor(Color.web(TEXT_DIM));
+
+        TextField tf = new TextField();
+        tf.setVisible(false);
+        tf.setManaged(false);
+
+        pf.setPromptText(prompt);
+        pf.setPrefHeight(44);
+        pf.setStyle("-fx-background-color:transparent; -fx-text-fill:" + TEXT_DARK + "; -fx-prompt-text-fill:" + TEXT_DIM + "; -fx-font-size:13px; -fx-padding:0 4;");
+
+        tf.setPromptText(prompt);
+        tf.setPrefHeight(44);
+        tf.setStyle("-fx-background-color:transparent; -fx-text-fill:" + TEXT_DARK + "; -fx-prompt-text-fill:" + TEXT_DIM + "; -fx-font-size:13px; -fx-padding:0 4;");
+
+        pf.textProperty().addListener((obs, old, val) -> { if (!tf.getText().equals(val)) tf.setText(val); });
+        tf.textProperty().addListener((obs, old, val) -> { if (!pf.getText().equals(val)) pf.setText(val); });
+
+        FontIcon eyeIc = new FontIcon(FontAwesomeSolid.EYE);
+        eyeIc.setIconSize(14);
+        eyeIc.setIconColor(Color.web(TEXT_GRAY));
+
+        Button eyeBtn = new Button();
+        eyeBtn.setGraphic(eyeIc);
+        eyeBtn.setStyle("-fx-background-color:transparent; -fx-cursor:hand; -fx-padding:4;");
+        eyeBtn.setFocusTraversable(false);
+
+        eyeBtn.setOnAction(e -> {
+            boolean show = !tf.isVisible();
+            if (show) {
+                tf.setVisible(true);  tf.setManaged(true);
+                pf.setVisible(false); pf.setManaged(false);
+                FontIcon eyeSlash = new FontIcon(FontAwesomeSolid.EYE_SLASH);
+                eyeSlash.setIconSize(14);
+                eyeSlash.setIconColor(Color.web(BLUE));
+                eyeBtn.setGraphic(eyeSlash);
+            } else {
+                tf.setVisible(false); tf.setManaged(false);
+                pf.setVisible(true);  pf.setManaged(true);
+                FontIcon eye = new FontIcon(FontAwesomeSolid.EYE);
+                eye.setIconSize(14);
+                eye.setIconColor(Color.web(TEXT_GRAY));
+                eyeBtn.setGraphic(eye);
+            }
+        });
+
+        StackPane inputStack = new StackPane(pf, tf);
+        HBox.setHgrow(inputStack, Priority.ALWAYS);
+
+        HBox wrapper = new HBox(10, lockIc, inputStack, eyeBtn);
+        wrapper.setAlignment(Pos.CENTER_LEFT);
+        wrapper.setPadding(new Insets(0, 8, 0, 14));
+        wrapper.setStyle("-fx-background-color:" + BG_WHITE + "; -fx-background-radius:10; -fx-border-color:" + BORDER_SOFT + "; -fx-border-radius:10;");
+
+        pf.focusedProperty().addListener((o, a, b) -> {
+            if (b) wrapper.setStyle("-fx-background-color:" + BG_WHITE + "; -fx-background-radius:10; -fx-border-color:" + BLUE + "; -fx-border-radius:10; -fx-border-width:2;");
+            else wrapper.setStyle("-fx-background-color:" + BG_WHITE + "; -fx-background-radius:10; -fx-border-color:" + BORDER_SOFT + "; -fx-border-radius:10;");
+        });
+        tf.focusedProperty().addListener((o, a, b) -> {
+            if (b) wrapper.setStyle("-fx-background-color:" + BG_WHITE + "; -fx-background-radius:10; -fx-border-color:" + BLUE + "; -fx-border-radius:10; -fx-border-width:2;");
+            else wrapper.setStyle("-fx-background-color:" + BG_WHITE + "; -fx-background-radius:10; -fx-border-color:" + BORDER_SOFT + "; -fx-border-radius:10;");
+        });
+
+        return new VBox(wrapper);
     }
 
     private Button authTab(String text, boolean active) {
@@ -307,9 +345,7 @@ public class ClientApp extends Application {
     }
 
     private String authTabStyle(boolean active) {
-        if (active) {
-            return "-fx-background-color:" + BLUE + "; -fx-text-fill:white; -fx-font-weight:bold; -fx-font-size:13px; -fx-background-radius:10; -fx-cursor:hand;";
-        }
+        if (active) return "-fx-background-color:" + BLUE + "; -fx-text-fill:white; -fx-font-weight:bold; -fx-font-size:13px; -fx-background-radius:10; -fx-cursor:hand;";
         return "-fx-background-color:#F1F5F9; -fx-text-fill:" + TEXT_GRAY + "; -fx-font-size:13px; -fx-background-radius:10; -fx-cursor:hand;";
     }
 
@@ -337,42 +373,17 @@ public class ClientApp extends Application {
         return f;
     }
 
-    private PasswordField lightPassword(FontAwesomeSolid icon, String prompt) {
-        FontIcon fi = new FontIcon(icon);
-        fi.setIconSize(13);
-        fi.setIconColor(Color.web(TEXT_DIM));
-
-        PasswordField f = new PasswordField();
-        f.setPromptText(prompt);
-        f.setPrefHeight(44);
-        f.setStyle("-fx-background-color:transparent; -fx-text-fill:" + TEXT_DARK + "; -fx-prompt-text-fill:" + TEXT_DIM + "; -fx-font-size:13px; -fx-padding:0 4;");
-
-        HBox wrapper = new HBox(10, fi, f);
-        wrapper.setAlignment(Pos.CENTER_LEFT);
-        wrapper.setPadding(new Insets(0, 14, 0, 14));
-        wrapper.setStyle("-fx-background-color:" + BG_WHITE + "; -fx-background-radius:10; -fx-border-color:" + BORDER_SOFT + "; -fx-border-radius:10;");
-        HBox.setHgrow(f, Priority.ALWAYS);
-
-        f.focusedProperty().addListener((o, a, b) -> {
-            if (b) wrapper.setStyle("-fx-background-color:" + BG_WHITE + "; -fx-background-radius:10; -fx-border-color:" + BLUE + "; -fx-border-radius:10; -fx-border-width:2;");
-            else wrapper.setStyle("-fx-background-color:" + BG_WHITE + "; -fx-background-radius:10; -fx-border-color:" + BORDER_SOFT + "; -fx-border-radius:10;");
-        });
-
-        return f;
-    }
-
     private VBox labeledInput(String labelText, javafx.scene.Node field) {
         Label l = new Label(labelText);
         l.setStyle("-fx-font-size:11px; -fx-font-weight:bold; -fx-text-fill:" + TEXT_DARK + ";");
         VBox v = new VBox(6, l, field);
-        v.setMaxWidth(360);
+        v.setMaxWidth(380);
         return v;
     }
 
     private Button primaryBtn(String text, String c1, String c2) {
         Label l = new Label(text);
         l.setStyle("-fx-text-fill:white; -fx-font-weight:bold; -fx-font-size:13px;");
-
         Button b = new Button();
         b.setGraphic(l);
         b.setPrefHeight(46);
@@ -382,29 +393,10 @@ public class ClientApp extends Application {
         return b;
     }
 
-    private void testConnection() {
-        String ip = serverIpField.getText().trim();
-        if (ip.isEmpty()) { showAlert("Vui lòng nhập Server IP!"); return; }
-        core.setHost(ip);
-        try {
-            String resp = core.send("PING");
-            if (resp.startsWith("OK")) showAlert("KẾT NỐI THÀNH CÔNG!\n\nServer: " + ip + ":2023\nIP máy bạn: " + myIP);
-            else showAlert("Server phản hồi: " + resp);
-        } catch (java.net.SocketTimeoutException te) {
-            showAlert("KHÔNG KẾT NỐI ĐƯỢC!\n\nIP: " + ip + ":2023\n\nKiểm tra:\n1. Server đã START chưa?\n2. IP đúng chưa?\n3. Cùng WiFi chưa?\n4. Firewall đã mở port 2023?");
-        } catch (Exception e) {
-            showAlert("Lỗi kết nối: " + e.getMessage());
-        }
-    }
-
-    // ==================================================
-    //              MAIN PAGE
-    // ==================================================
     private BorderPane buildMainPage() {
         BorderPane root = new BorderPane();
         root.setStyle("-fx-background-color:" + BG_MAIN + ";");
         root.setTop(buildTopBar());
-        root.setLeft(buildSidebar());
         root.setCenter(buildCenterArea());
         root.setBottom(buildActivityBar());
         return root;
@@ -431,12 +423,11 @@ public class ClientApp extends Application {
         Region sp2 = new Region();
         HBox.setHgrow(sp2, Priority.ALWAYS);
 
-        // ⭐ IP badge
+        serverIpLabel = new Label("● Server: " + core.getServerIP());
+        serverIpLabel.setStyle("-fx-text-fill:white; -fx-font-size:11px; -fx-font-weight:bold; -fx-background-color:rgba(16,185,129,0.65); -fx-padding:6 14; -fx-background-radius:20;");
+
         myIpLabel = new Label("● IP: " + myIP);
         myIpLabel.setStyle("-fx-text-fill:white; -fx-font-size:11px; -fx-font-weight:bold; -fx-background-color:rgba(6,182,212,0.55); -fx-padding:6 14; -fx-background-radius:20;");
-
-        statusLabel = new Label("● Online");
-        statusLabel.setStyle("-fx-text-fill:white; -fx-font-size:11px; -fx-font-weight:bold; -fx-background-color:rgba(16,185,129,0.65); -fx-padding:6 14; -fx-background-radius:20;");
 
         avatarLabel = new Label("?");
         avatarLabel.setStyle("-fx-background-color:white; -fx-text-fill:" + BLUE + "; -fx-font-size:13px; -fx-font-weight:bold; -fx-background-radius:50; -fx-padding:8 12;");
@@ -449,114 +440,11 @@ public class ClientApp extends Application {
         userHBox.setPadding(new Insets(4, 12, 4, 4));
         userHBox.setStyle("-fx-background-color:rgba(255,255,255,0.18); -fx-background-radius:24;");
 
-        HBox top = new HBox(14, logoSection, sp1, myIpLabel, statusLabel, userHBox);
+        HBox top = new HBox(14, logoSection, sp1, serverIpLabel, myIpLabel, userHBox);
         top.setAlignment(Pos.CENTER_LEFT);
         top.setPadding(new Insets(14, 24, 14, 24));
         top.setStyle("-fx-background-color: linear-gradient(to right, " + BG_HEADER + ", " + BG_HEADER_2 + ");");
         return top;
-    }
-
-    private VBox buildSidebar() {
-        VBox box = new VBox(4);
-        box.setPrefWidth(240);
-        box.setPadding(new Insets(16, 12, 16, 12));
-        box.setStyle("-fx-background-color:" + BG_WHITE + "; -fx-border-color:" + BORDER + "; -fx-border-width:0 1 0 0;");
-
-        Label sectionLbl = new Label("MENU");
-        sectionLbl.setStyle("-fx-text-fill:" + TEXT_DIM + "; -fx-font-size:10px; -fx-font-weight:bold; -fx-padding:0 0 6 8;");
-
-        Button inboxBtn   = sideBtn(FontAwesomeSolid.INBOX,        "Hộp thư đến",  true);
-        Button sentBtn    = sideBtn(FontAwesomeSolid.PAPER_PLANE,  "Đã gửi",       false);
-        Button starredBtn = sideBtn(FontAwesomeSolid.STAR,         "Đã đánh dấu",  false);
-        Button trashBtn   = sideBtn(FontAwesomeSolid.TRASH_ALT,    "Thùng rác",    false);
-        Button contactBtn = sideBtn(FontAwesomeSolid.ADDRESS_BOOK, "Danh bạ",      false);
-        Button logoutBtn  = sideBtn(FontAwesomeSolid.SIGN_OUT_ALT, "Đăng xuất",    false);
-
-        currentSideBtn = inboxBtn;
-
-        inboxBtn.setOnAction(e   -> switchFolder(inboxBtn, "INBOX"));
-        sentBtn.setOnAction(e    -> switchFolder(sentBtn, "SENT"));
-        starredBtn.setOnAction(e -> switchFolder(starredBtn, "STARRED"));
-        trashBtn.setOnAction(e   -> switchFolder(trashBtn, "TRASH"));
-        contactBtn.setOnAction(e -> { loadContacts(); switchFolder(contactBtn, "CONTACTS"); });
-        logoutBtn.setOnAction(e  -> {
-            currentUser = null; currentEmail = null; currentPass = null;
-            avatarLabel.setText("?");
-            userEmailLabel.setText("guest");
-            log("Đã đăng xuất");
-            rootStack.getChildren().setAll(authPage);
-        });
-
-        Region spacer = new Region();
-        VBox.setVgrow(spacer, Priority.ALWAYS);
-
-        FontIcon penIc = new FontIcon(FontAwesomeSolid.PEN);
-        penIc.setIconSize(14);
-        penIc.setIconColor(Color.WHITE);
-        Label composeLbl = new Label("  Soạn thư");
-        composeLbl.setGraphic(penIc);
-        composeLbl.setStyle("-fx-text-fill:white; -fx-font-weight:bold; -fx-font-size:13px;");
-        Button composeBtn = new Button();
-        composeBtn.setGraphic(composeLbl);
-        composeBtn.setPrefWidth(216);
-        composeBtn.setPrefHeight(46);
-        composeBtn.setAlignment(Pos.CENTER_LEFT);
-        composeBtn.setPadding(new Insets(0, 0, 0, 20));
-        composeBtn.setStyle("-fx-background-color: linear-gradient(to right, " + BLUE + ", #1565C0); -fx-background-radius:10; -fx-cursor:hand; -fx-effect: dropshadow(gaussian, rgba(25,118,210,0.35), 10, 0, 0, 0);");
-        composeBtn.setOnMouseEntered(e -> composeBtn.setStyle("-fx-background-color: linear-gradient(to right, #1565C0, " + BLUE + "); -fx-background-radius:10; -fx-cursor:hand; -fx-effect: dropshadow(gaussian, rgba(25,118,210,0.55), 14, 0, 0, 0);"));
-        composeBtn.setOnMouseExited (e -> composeBtn.setStyle("-fx-background-color: linear-gradient(to right, " + BLUE + ", #1565C0); -fx-background-radius:10; -fx-cursor:hand; -fx-effect: dropshadow(gaussian, rgba(25,118,210,0.35), 10, 0, 0, 0);"));
-        composeBtn.setOnAction(e -> openCompose("", "", ""));
-
-        box.getChildren().addAll(sectionLbl, inboxBtn, sentBtn, starredBtn, trashBtn, contactBtn, spacer, composeBtn, logoutBtn);
-        return box;
-    }
-
-    private Button sideBtn(FontAwesomeSolid ic, String text, boolean active) {
-        FontIcon fi = new FontIcon(ic);
-        fi.setIconSize(14);
-        fi.setIconColor(Color.web(active ? BLUE : TEXT_GRAY));
-        Label l = new Label("  " + text);
-        l.setStyle("-fx-text-fill:" + (active ? BLUE : TEXT_DARK) + "; -fx-font-size:13px; -fx-font-weight:" + (active ? "bold" : "normal") + ";");
-        HBox h = new HBox(fi, l);
-        h.setAlignment(Pos.CENTER_LEFT);
-
-        Button b = new Button();
-        b.setGraphic(h);
-        b.setPrefWidth(216);
-        b.setPrefHeight(42);
-        b.setAlignment(Pos.CENTER_LEFT);
-        b.setPadding(new Insets(0, 0, 0, 16));
-        b.setStyle(sideBtnStyle(active));
-        b.setOnMouseEntered(e -> { if (b != currentSideBtn) b.setStyle("-fx-background-color:" + BG_HOVER + "; -fx-background-radius:10; -fx-cursor:hand;"); });
-        b.setOnMouseExited (e -> { if (b != currentSideBtn) b.setStyle(sideBtnStyle(false)); });
-        return b;
-    }
-
-    private String sideBtnStyle(boolean active) {
-        if (active) return "-fx-background-color:" + BG_ACTIVE + "; -fx-background-radius:10; -fx-cursor:hand;";
-        return "-fx-background-color:transparent; -fx-background-radius:10; -fx-cursor:hand;";
-    }
-
-    private void switchFolder(Button btn, String folder) {
-        if (currentSideBtn != null) {
-            ((HBox) currentSideBtn.getGraphic()).getChildren().forEach(n -> {
-                if (n instanceof FontIcon) ((FontIcon) n).setIconColor(Color.web(TEXT_GRAY));
-                if (n instanceof Label) ((Label) n).setStyle("-fx-text-fill:" + TEXT_DARK + "; -fx-font-size:13px;");
-            });
-            currentSideBtn.setStyle(sideBtnStyle(false));
-        }
-        currentSideBtn = btn;
-        if (btn != null) {
-            ((HBox) btn.getGraphic()).getChildren().forEach(n -> {
-                if (n instanceof FontIcon) ((FontIcon) n).setIconColor(Color.web(BLUE));
-                if (n instanceof Label) ((Label) n).setStyle("-fx-text-fill:" + BLUE + "; -fx-font-size:13px; -fx-font-weight:bold;");
-            });
-            btn.setStyle(sideBtnStyle(true));
-        }
-
-        currentFolder = folder;
-        if (folder.equals("CONTACTS")) showContactsView();
-        else { loadFolder(folder); showInboxView(); }
     }
 
     private StackPane buildCenterArea() {
@@ -594,7 +482,7 @@ public class ClientApp extends Application {
         return v;
     }
 
-    private void showInboxView() {
+    private void showMailView() {
         HBox view = new HBox();
 
         VBox leftPanel = new VBox(0);
@@ -602,7 +490,7 @@ public class ClientApp extends Application {
         FontIcon inboxIc = new FontIcon(FontAwesomeSolid.INBOX);
         inboxIc.setIconSize(16);
         inboxIc.setIconColor(Color.web(BLUE));
-        Label listTitle = new Label("  " + folderTitle(currentFolder));
+        Label listTitle = new Label("  Hộp thư — " + currentUser);
         listTitle.setGraphic(inboxIc);
         listTitle.setStyle("-fx-text-fill:" + TEXT_DARK + "; -fx-font-size:15px; -fx-font-weight:bold;");
 
@@ -615,9 +503,20 @@ public class ClientApp extends Application {
         refIc.setIconColor(Color.web(TEXT_GRAY));
         refreshBtn.setGraphic(refIc);
         refreshBtn.setStyle("-fx-background-color:transparent; -fx-cursor:hand; -fx-padding:6;");
-        refreshBtn.setOnAction(e -> { loadFolder(currentFolder); log("🔄 Đã làm mới"); });
+        refreshBtn.setOnAction(e -> { silentRefresh(); log("🔄 Đã làm mới"); });
 
-        HBox header = new HBox(8, listTitle, sp, refreshBtn);
+        Button composeBtn = new Button();
+        FontIcon penIc = new FontIcon(FontAwesomeSolid.PEN);
+        penIc.setIconSize(12);
+        penIc.setIconColor(Color.WHITE);
+        Label composeLbl = new Label("  Soạn thư");
+        composeLbl.setGraphic(penIc);
+        composeLbl.setStyle("-fx-text-fill:white; -fx-font-weight:bold; -fx-font-size:12px;");
+        composeBtn.setGraphic(composeLbl);
+        composeBtn.setStyle("-fx-background-color:" + BLUE + "; -fx-background-radius:8; -fx-padding:6 14; -fx-cursor:hand;");
+        composeBtn.setOnAction(e -> openCompose("", "", ""));
+
+        HBox header = new HBox(8, listTitle, sp, composeBtn, refreshBtn);
         header.setAlignment(Pos.CENTER_LEFT);
         header.setPadding(new Insets(16, 18, 14, 18));
         header.setStyle("-fx-border-color:transparent transparent " + BORDER + " transparent; -fx-border-width:0 0 1 0; -fx-background-color:" + BG_WHITE + ";");
@@ -631,9 +530,9 @@ public class ClientApp extends Application {
                 if (empty || item == null) {
                     setText(null); setGraphic(null); setStyle("-fx-background-color:" + BG_WHITE + ";");
                 } else {
-                    FontIcon starIc = new FontIcon(item.starred ? FontAwesomeSolid.STAR : FontAwesomeSolid.ENVELOPE);
+                    FontIcon starIc = new FontIcon(FontAwesomeSolid.ENVELOPE);
                     starIc.setIconSize(14);
-                    starIc.setIconColor(Color.web(item.starred ? YELLOW : BLUE));
+                    starIc.setIconColor(Color.web(BLUE));
 
                     Label from = new Label(item.from);
                     from.setStyle("-fx-text-fill:" + TEXT_DARK + "; -fx-font-size:13px; -fx-font-weight:bold;");
@@ -685,19 +584,6 @@ public class ClientApp extends Application {
         return v;
     }
 
-    private String folderTitle(String folder) {
-        switch (folder) {
-            case "INBOX":   return "Hộp thư đến";
-            case "SENT":    return "Đã gửi";
-            case "STARRED": return "Đã đánh dấu sao";
-            case "TRASH":   return "Thùng rác";
-            default:        return "Mail";
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════
-    //   READER PANE
-    // ═══════════════════════════════════════════════════════
     private VBox buildReaderPane() {
         Label subjLabel = new Label("Chọn một mail để đọc");
         subjLabel.setStyle("-fx-text-fill:" + TEXT_DARK + "; -fx-font-size:20px; -fx-font-weight:bold;");
@@ -730,46 +616,11 @@ public class ClientApp extends Application {
         replyIc.setIconColor(Color.web(BLUE));
         Button replyBtn = styledToolBtn("Trả lời", replyIc, BLUE);
 
-        FontIcon starIc = new FontIcon(FontAwesomeSolid.STAR);
-        starIc.setIconSize(12);
-        starIc.setIconColor(Color.web(YELLOW));
-        Button starBtn = styledToolBtn("Đánh dấu", starIc, YELLOW);
-
-        FontIcon delIc = new FontIcon(FontAwesomeSolid.TRASH_ALT);
-        delIc.setIconSize(12);
-        delIc.setIconColor(Color.web(RED));
-        Button delBtn = styledToolBtn("Xóa", delIc, RED);
-
         replyBtn.setOnAction(e -> {
             if (selectedMail != null) openCompose(selectedMail.from, "Re: " + selectedMail.subject, "\n\n--- Mail gốc ---\n" + selectedMail.preview);
         });
-        starBtn.setOnAction(e -> {
-            if (selectedMail != null) {
-                try {
-                    String resp = core.send("STAR|" + currentUser + "|" + selectedMail.folder + "|" + selectedMail.fileName);
-                    log("⭐ " + resp.substring(3));
-                    loadFolder(currentFolder);
-                } catch (Exception ignored) {}
-            }
-        });
-        delBtn.setOnAction(e -> {
-            if (selectedMail != null) {
-                try {
-                    String resp = core.send("DELETE|" + currentUser + "|" + selectedMail.folder + "|" + selectedMail.fileName);
-                    log("🗑 " + resp.substring(3));
-                    selectedMail = null;
-                    subjLabel.setText("Chọn một mail để đọc");
-                    readerFrom.setText("—");
-                    readerTo.setText("—");
-                    readerFromIp.setText("—");
-                    readerTime.setText("—");
-                    readerBody.clear();
-                    loadFolder(currentFolder);
-                } catch (Exception ignored) {}
-            }
-        });
 
-        HBox toolbar = new HBox(8, replyBtn, starBtn, delBtn);
+        HBox toolbar = new HBox(8, replyBtn);
         toolbar.setAlignment(Pos.CENTER_LEFT);
 
         readerBody = new TextArea();
@@ -815,14 +666,11 @@ public class ClientApp extends Application {
         readerTime.setText(item.time);
 
         try {
-            String resp = core.send("GET|" + currentUser + "|" + item.folder + "|" + item.fileName);
+            String resp = core.send("GET|" + currentUser + "|" + item.fileName);
             if (resp.startsWith("OK|")) {
                 String content = resp.substring(3);
-
                 String fromIp = extractLine(content, "FromIP");
-                if (fromIp.isEmpty()) fromIp = extractLine(content, "IP nguoi gui");
                 readerFromIp.setText("IP người gửi: " + (fromIp.isEmpty() ? "—" : fromIp));
-
                 String body = extractBody(content);
                 if (body.isEmpty()) body = content;
                 readerBody.setText(body);
@@ -850,63 +698,9 @@ public class ClientApp extends Application {
     private String extractBody(String content) {
         int idx = content.indexOf("\n\n");
         if (idx > 0) return content.substring(idx + 2).trim();
-        for (String line : content.split("\n")) {
-            if (line.startsWith("Noi dung")) {
-                int cIdx = line.indexOf(':');
-                if (cIdx > 0) return line.substring(cIdx + 1).trim();
-            }
-        }
         return content.trim();
     }
 
-    private void showContactsView() {
-        Label title = new Label("📇 Danh bạ");
-        title.setStyle("-fx-text-fill:" + TEXT_DARK + "; -fx-font-size:18px; -fx-font-weight:bold;");
-
-        Label hint = new Label("Bấm đúp vào một liên hệ để soạn thư");
-        hint.setStyle("-fx-text-fill:" + TEXT_GRAY + "; -fx-font-size:12px;");
-
-        contactsList = new ListView<>();
-        contactsList.setStyle("-fx-background-color:" + BG_WHITE + "; -fx-border-color:transparent; -fx-control-inner-background:" + BG_WHITE + ";");
-        contactsList.setCellFactory(lv -> new ListCell<>() {
-            @Override protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) { setText(null); setGraphic(null); }
-                else {
-                    FontIcon fi = new FontIcon(FontAwesomeSolid.USER_CIRCLE);
-                    fi.setIconSize(20);
-                    fi.setIconColor(Color.web(BLUE));
-                    Label t = new Label(item);
-                    t.setStyle("-fx-text-fill:" + TEXT_DARK + "; -fx-font-size:14px;");
-                    HBox h = new HBox(12, fi, t);
-                    h.setAlignment(Pos.CENTER_LEFT);
-                    setGraphic(h);
-                    setStyle("-fx-padding:12 16; -fx-background-color:" + BG_WHITE + "; -fx-border-color:transparent transparent " + BORDER + " transparent; -fx-border-width:0 0 1 0; -fx-cursor:hand;");
-                }
-            }
-        });
-        contactsList.setOnMouseClicked(e -> {
-            if (e.getClickCount() == 2) {
-                String sel = contactsList.getSelectionModel().getSelectedItem();
-                if (sel != null) openCompose(sel, "", "");
-            }
-        });
-        VBox.setVgrow(contactsList, Priority.ALWAYS);
-
-        VBox card = new VBox(12, title, hint, contactsList);
-        card.setPadding(new Insets(24));
-        card.setStyle("-fx-background-color:" + BG_WHITE + "; -fx-background-radius:12; -fx-border-color:" + BORDER + "; -fx-border-radius:12;");
-        VBox.setVgrow(card, Priority.ALWAYS);
-
-        centerContent.getChildren().setAll(card);
-
-        if (allContacts.isEmpty()) loadContacts();
-        else contactsList.getItems().setAll(allContacts);
-    }
-
-    // ==================================================
-    //              COMPOSE MODAL
-    // ==================================================
     private void openCompose(String to, String subject, String content) {
         FontIcon ic = new FontIcon(FontAwesomeSolid.PAPER_PLANE);
         ic.setIconSize(18);
@@ -932,8 +726,6 @@ public class ClientApp extends Application {
         Button closeBtn = new Button();
         closeBtn.setGraphic(xIc);
         closeBtn.setStyle("-fx-background-color:" + BG_MAIN + "; -fx-background-radius:8; -fx-cursor:hand; -fx-padding:8 12; -fx-border-color:" + BORDER + "; -fx-border-radius:8;");
-        closeBtn.setOnMouseEntered(e -> closeBtn.setStyle("-fx-background-color:" + RED + "30; -fx-background-radius:8; -fx-cursor:hand; -fx-padding:8 12; -fx-border-color:" + RED + "; -fx-border-radius:8;"));
-        closeBtn.setOnMouseExited (e -> closeBtn.setStyle("-fx-background-color:" + BG_MAIN + "; -fx-background-radius:8; -fx-cursor:hand; -fx-padding:8 12; -fx-border-color:" + BORDER + "; -fx-border-radius:8;"));
         closeBtn.setOnAction(e -> closeModal());
 
         HBox header = new HBox(10, titleSection, sp, closeBtn);
@@ -961,11 +753,6 @@ public class ClientApp extends Application {
         toRow.setStyle("-fx-background-color:" + BG_MAIN + "; -fx-background-radius:12; -fx-border-color:" + BORDER_SOFT + "; -fx-border-radius:12;");
         toRow.setPrefHeight(48);
 
-        toF.focusedProperty().addListener((o, a, b) -> {
-            if (b) toRow.setStyle("-fx-background-color:" + BG_MAIN + "; -fx-background-radius:12; -fx-border-color:" + BLUE + "; -fx-border-radius:12; -fx-border-width:2;");
-            else   toRow.setStyle("-fx-background-color:" + BG_MAIN + "; -fx-background-radius:12; -fx-border-color:" + BORDER_SOFT + "; -fx-border-radius:12;");
-        });
-
         FontIcon subIc = new FontIcon(FontAwesomeSolid.TAG);
         subIc.setIconSize(14);
         subIc.setIconColor(Color.web(YELLOW));
@@ -985,11 +772,6 @@ public class ClientApp extends Application {
         subRow.setPadding(new Insets(0, 16, 0, 14));
         subRow.setStyle("-fx-background-color:" + BG_MAIN + "; -fx-background-radius:12; -fx-border-color:" + BORDER_SOFT + "; -fx-border-radius:12;");
         subRow.setPrefHeight(48);
-
-        subF.focusedProperty().addListener((o, a, b) -> {
-            if (b) subRow.setStyle("-fx-background-color:" + BG_MAIN + "; -fx-background-radius:12; -fx-border-color:" + BLUE + "; -fx-border-radius:12; -fx-border-width:2;");
-            else   subRow.setStyle("-fx-background-color:" + BG_MAIN + "; -fx-background-radius:12; -fx-border-color:" + BORDER_SOFT + "; -fx-border-radius:12;");
-        });
 
         TextArea bodyA = new TextArea();
         bodyA.setPromptText("Viết nội dung thư ở đây...");
@@ -1011,8 +793,6 @@ public class ClientApp extends Application {
         sendBtn.setPrefHeight(42);
         sendBtn.setPrefWidth(140);
         sendBtn.setStyle("-fx-background-color: linear-gradient(to right, " + BLUE + ", #1565C0); -fx-background-radius:21; -fx-cursor:hand;");
-        sendBtn.setOnMouseEntered(e -> sendBtn.setStyle("-fx-background-color: linear-gradient(to right, #1565C0, " + BLUE + "); -fx-background-radius:21; -fx-cursor:hand;"));
-        sendBtn.setOnMouseExited(e -> sendBtn.setStyle("-fx-background-color: linear-gradient(to right, " + BLUE + ", #1565C0); -fx-background-radius:21; -fx-cursor:hand;"));
 
         sendBtn.setOnAction(e -> {
             String t = toF.getText().trim();
@@ -1028,10 +808,9 @@ public class ClientApp extends Application {
                 String resp = core.send("SEND|" + currentUser + "|" + currentEmail + "|" + toEmail + "|" + s + "|" + b);
                 if (resp.startsWith("OK")) {
                     log("✅ Đã gửi mail tới " + toEmail);
-                    log("   FromIP ghi vào file: " + myIP);
                     showToast("Đã gửi thư tới " + toEmail);
                     closeModal();
-                    loadFolder(currentFolder);
+                    silentRefresh();
 
                     new Timeline(new KeyFrame(Duration.millis(300), ev -> {
                         silentRefresh();
@@ -1087,15 +866,12 @@ public class ClientApp extends Application {
             toastContainer.getChildren().add(h);
 
             FadeTransition fi = new FadeTransition(Duration.millis(300), h);
-            fi.setFromValue(0);
-            fi.setToValue(1);
-            fi.play();
+            fi.setFromValue(0); fi.setToValue(1); fi.play();
 
             javafx.animation.PauseTransition p = new javafx.animation.PauseTransition(Duration.seconds(3));
             p.setOnFinished(ev -> {
                 FadeTransition fo = new FadeTransition(Duration.millis(300), h);
-                fo.setFromValue(1);
-                fo.setToValue(0);
+                fo.setFromValue(1); fo.setToValue(0);
                 fo.setOnFinished(e2 -> toastContainer.getChildren().remove(h));
                 fo.play();
             });
@@ -1103,13 +879,7 @@ public class ClientApp extends Application {
         });
     }
 
-    private void applyServerHost() {
-        String ip = serverIpField.getText().trim();
-        if (!ip.isEmpty()) core.setHost(ip);
-    }
-
     private void doLogin() {
-        applyServerHost();
         String u = loginUserField.getText().trim();
         String p = loginPassField.getText().trim();
         if (u.isEmpty() || p.isEmpty()) { showAlert("Nhập đầy đủ!"); return; }
@@ -1137,19 +907,18 @@ public class ClientApp extends Application {
                 log("✅ Đăng nhập: " + currentEmail);
                 log("   IP máy bạn: " + myIP);
                 showToast("Đăng nhập thành công!");
-                showInboxView();
+                showMailView();
             } else {
                 showAlert("Lỗi: " + resp.substring(6));
             }
         } catch (java.net.SocketTimeoutException te) {
-            showAlert("Không kết nối được server.\nKiểm tra IP: " + core.getHost());
+            showAlert("Không kết nối được server.\nKiểm tra:\n1. Server đã START chưa?\n2. IP server: " + core.getServerIP() + "\n3. Cùng WiFi chưa?\n4. Firewall đã mở port 2023?");
         } catch (Exception e) {
             showAlert("Lỗi: " + e.getMessage());
         }
     }
 
     private void doRegister() {
-        applyServerHost();
         String u = regUserField.getText().trim();
         String p = regPassField.getText().trim();
         String c = regPassConfirmField.getText().trim();
@@ -1175,15 +944,7 @@ public class ClientApp extends Application {
 
     private void silentRefresh() {
         try {
-            String cmd;
-            switch (currentFolder) {
-                case "SENT":    cmd = "SENT|" + currentUser;    break;
-                case "TRASH":   cmd = "TRASH|" + currentUser;   break;
-                case "STARRED": cmd = "STARRED|" + currentUser; break;
-                case "CONTACTS": return;
-                default:        cmd = "LOGIN|" + currentUser + "|" + currentPass;
-            }
-            String resp = core.send(cmd);
+            String resp = core.send("LOGIN|" + currentUser + "|" + currentPass);
             if (resp.startsWith("OK")) {
                 MailItem sel = selectedMail;
                 int oldCount = mailList != null ? mailList.getItems().size() : 0;
@@ -1205,21 +966,6 @@ public class ClientApp extends Application {
         } catch (Exception ignored) {}
     }
 
-    private void loadFolder(String folder) {
-        if (currentUser == null) return;
-        try {
-            String cmd;
-            switch (folder) {
-                case "SENT":    cmd = "SENT|" + currentUser;    break;
-                case "TRASH":   cmd = "TRASH|" + currentUser;   break;
-                case "STARRED": cmd = "STARRED|" + currentUser; break;
-                default:        cmd = "LOGIN|" + currentUser + "|" + currentPass;
-            }
-            String resp = core.send(cmd);
-            if (resp.startsWith("OK")) parseMailbox(resp);
-        } catch (Exception ignored) {}
-    }
-
     private void parseMailbox(String resp) {
         if (mailList == null) return;
         mailList.getItems().clear();
@@ -1233,23 +979,6 @@ public class ClientApp extends Application {
                 }
             }
         }
-    }
-
-    private void loadContacts() {
-        try {
-            applyServerHost();
-            String resp = core.send("LIST");
-            allContacts.clear();
-            if (resp.startsWith("OK")) {
-                for (String line : resp.split("\n")) {
-                    if (line.startsWith("USER|")) {
-                        String[] p = line.split("\\|");
-                        if (p.length >= 3) allContacts.add(p[2]);
-                    }
-                }
-            }
-            if (contactsList != null) contactsList.getItems().setAll(allContacts);
-        } catch (Exception ignored) {}
     }
 
     private void log(String msg) {

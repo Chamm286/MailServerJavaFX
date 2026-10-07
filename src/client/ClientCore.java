@@ -4,8 +4,12 @@ import java.net.*;
 
 public class ClientCore {
 
-    private String host = "localhost";
-    private static final int PORT = 2023;
+    // ═══════════════════════════════════════════════════════════
+    //  ⭐ IP SERVER — HARDCODE TRỰC TIẾP TRONG CODE
+    //  Đổi IP này khi máy server đổi WiFi
+    // ═══════════════════════════════════════════════════════════
+    private static final String SERVER_IP = "172.26.22.8";
+    private static final int    PORT      = 2023;
 
     private final DatagramSocket socket;
 
@@ -14,13 +18,13 @@ public class ClientCore {
         socket.setSoTimeout(3000);
     }
 
-    public void setHost(String host) { this.host = host; }
-    public String getHost()          { return host; }
+    // ⭐ 2 HÀM ĐANG THIẾU
+    public String getServerIP() { return SERVER_IP; }
+    public int    getPort()     { return PORT; }
 
     public String send(String req) throws Exception {
-        InetAddress addr = InetAddress.getByName(host);
+        InetAddress addr = InetAddress.getByName(SERVER_IP);
 
-        // Retry 3 lần nếu packet mất
         for (int attempt = 1; attempt <= 3; attempt++) {
             try {
                 byte[] out = req.getBytes("UTF-8");

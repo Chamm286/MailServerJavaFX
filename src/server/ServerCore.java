@@ -7,7 +7,7 @@ import java.util.*;
 
 public class ServerCore {
 
-    public static final String SERVER_DIR = "F:/server_mail";
+    public static final String SERVER_DIR = "F:/MailServerJavaFX/server_mail";
     public static final int    PORT       = 2023;
 
     public interface Logger {
@@ -95,23 +95,11 @@ public class ServerCore {
             case "LIST":
                 return listUsers();
             case "GET":
-                if (p.length < 4) return "ERROR|Missing params";
-                return getMailContent(p[1], p[2], p[3]);
-            case "STAR":
-                if (p.length < 4) return "ERROR|Missing params";
-                return toggleStar(p[1], p[2], p[3]);
+                if (p.length < 3) return "ERROR|Missing params";
+                return getMailContent(p[1], p[2]);
             case "DELETE":
-                if (p.length < 4) return "ERROR|Missing params";
-                return deleteMail(p[1], p[2], p[3]);
-            case "SENT":
-                if (p.length < 2) return "ERROR|Missing user";
-                return listSent(p[1]);
-            case "TRASH":
-                if (p.length < 2) return "ERROR|Missing user";
-                return listTrash(p[1]);
-            case "STARRED":
-                if (p.length < 2) return "ERROR|Missing user";
-                return listStarred(p[1]);
+                if (p.length < 3) return "ERROR|Missing params";
+                return deleteMail(p[1], p[2]);
             case "PING":
                 return "OK|PONG";
             default:
@@ -119,140 +107,102 @@ public class ServerCore {
         }
     }
 
-    // YÊU CẦU #1: ĐĂNG KÝ
+    // ═══════════════════════════════════════════════════════════
+    //  YÊU CẦU #1: ĐĂNG KÝ
+    //  Tạo folder: server_mail/<user>/
+    //  CHỈ 1 FILE DUY NHẤT: new_email.txt (3 dòng User/Password/Created)
+    //  KHÔNG có folder con
+    // ═══════════════════════════════════════════════════════════
     private String register(String user, String pass) {
         try {
             File dir = new File(SERVER_DIR, user);
             if (dir.exists()) return "ERROR|Account already exists";
             dir.mkdirs();
-            new File(dir, "inbox").mkdirs();
-            new File(dir, "sent").mkdirs();
-            new File(dir, "trash").mkdirs();
 
             String now = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
-            String email = user + "@gmail.com";
 
-            write(new File(dir, "user.txt"),  user);
-            write(new File(dir, "pass.txt"),  pass);
-            write(new File(dir, "date.txt"),  now);
-            write(new File(dir, "email.txt"), email);
-            write(new File(dir, "starred.txt"), "");
-
-            // new_email.txt — chỉ có 3 dòng info
+            // ⭐ CHỈ 1 FILE: new_email.txt
             write(new File(dir, "new_email.txt"),
-                  "User    : " + user + "\n" +
-                  "Email   : " + email + "\n" +
-                  "Created : " + now  + "\n");
+                  "User     : " + user + "\n" +
+                  "Password : " + pass + "\n" +
+                  "Created  : " + now  + "\n");
 
-            logger.log("[OK] Registered: " + email);
-            return "OK|Register successful. Your email: " + email;
+            logger.log("[OK] Registered: " + user);
+            return "OK|Register successful. Your email: " + user + "@gmail.com";
         } catch (Exception e) {
             return "ERROR|" + e.getMessage();
         }
     }
 
-    // YÊU CẦU #3: LOGIN → DANH SÁCH TÊN FILE
+    // ═══════════════════════════════════════════════════════════
+    //  YÊU CẦU #3: LOGIN
+    //  Đọc User/Password từ new_email.txt
+    //  Trả về danh sách TÊN FILE trong folder account
+    // ═══════════════════════════════════════════════════════════
     private String login(String user, String pass) {
         try {
             File dir = new File(SERVER_DIR, user);
             if (!dir.exists()) return "ERROR|Account not found";
 
-            String sU = read(new File(dir, "user.txt")).trim();
-            String sP = read(new File(dir, "pass.txt")).trim();
+            File info = new File(dir, "new_email.txt");
+            if (!info.exists()) return "ERROR|Corrupted account";
+
+            String content = read(info);
+            String sU = extract(content, "User");
+            String sP = extract(content, "Password");
 
             if (!sU.equals(user) || !sP.equals(pass))
                 return "ERROR|Wrong username or password";
 
-            String myEmail = read(new File(dir, "email.txt")).trim();
+            String myEmail = user + "@gmail.com";
 
             StringBuilder sb = new StringBuilder("OK|Login successful\n");
             sb.append("EMAIL|").append(myEmail).append("\n");
             sb.append("SECTION|INBOX\n");
 
-            appendAccountFiles(sb, dir);
-            appendMailList(sb, new File(dir, "inbox"), user, dir, "INBOX");
-
-            return sb.toString();
-        } catch (Exception e) {
-            return "ERROR|" + e.getMessage();
-        }
-    }
-
-    private void appendAccountFiles(StringBuilder sb, File dir) {
-        File[] files = dir.listFiles();
-        if (files == null) return;
-        Arrays.sort(files, Comparator.comparing(File::getName));
-        for (File f : files) {
-            if (f.isFile()) {
-                sb.append("ACCOUNTFILE|").append(f.getName()).append("\n");
-            }
-        }
-    }
-
-    private String listSent(String user) {
-        try {
-            File dir = new File(SERVER_DIR, user);
-            if (!dir.exists()) return "ERROR|Account not found";
-            StringBuilder sb = new StringBuilder("OK|SENT\n");
-            sb.append("SECTION|SENT\n");
-            appendMailList(sb, new File(dir, "sent"), user, dir, "SENT");
-            return sb.toString();
-        } catch (Exception e) {
-            return "ERROR|" + e.getMessage();
-        }
-    }
-
-    private String listTrash(String user) {
-        try {
-            File dir = new File(SERVER_DIR, user);
-            if (!dir.exists()) return "ERROR|Account not found";
-            StringBuilder sb = new StringBuilder("OK|TRASH\n");
-            sb.append("SECTION|TRASH\n");
-            appendMailList(sb, new File(dir, "trash"), user, dir, "TRASH");
-            return sb.toString();
-        } catch (Exception e) {
-            return "ERROR|" + e.getMessage();
-        }
-    }
-
-    private String listStarred(String user) {
-        try {
-            File dir = new File(SERVER_DIR, user);
-            if (!dir.exists()) return "ERROR|Account not found";
-
-            File starredFile = new File(dir, "starred.txt");
-            Set<String> starred = new HashSet<>();
-            if (starredFile.exists()) {
-                for (String line : read(starredFile).split("\n")) {
-                    String s = line.trim();
-                    if (!s.isEmpty()) starred.add(s);
-                }
-            }
-
-            StringBuilder sb = new StringBuilder("OK|STARRED\n");
-            sb.append("SECTION|STARRED\n");
-
-            File[] folders = { new File(dir, "inbox"), new File(dir, "sent"), new File(dir, "trash") };
-            for (File folder : folders) {
-                if (!folder.exists()) continue;
-                File[] files = folder.listFiles();
-                if (files == null) continue;
+            // ⭐ Trả về danh sách TÊN FILE trong folder account
+            File[] files = dir.listFiles();
+            if (files != null) {
+                Arrays.sort(files, Comparator.comparing(File::getName));
                 for (File f : files) {
-                    if (starred.contains(f.getName())) {
-                        appendOneMail(sb, f, folder.getName(), user);
+                    if (f.isFile()) {
+                        // Đọc thông tin mail để client hiển thị
+                        String mailContent = read(f);
+                        if (f.getName().startsWith("email_")) {
+                            // Đây là mail → parse
+                            String from    = extract(mailContent, "From");
+                            String fromIp  = extract(mailContent, "FromIP");
+                            String to      = extract(mailContent, "To");
+                            String subj    = extract(mailContent, "Subject");
+                            String time    = extract(mailContent, "SentTime");
+                            String body    = extractBody(mailContent);
+
+                            sb.append("MAIL|INBOX|")
+                              .append(f.getName()).append("|")
+                              .append(from).append("|")
+                              .append(to).append("|")
+                              .append(subj).append("|")
+                              .append(time).append("|")
+                              .append(body.replace("\n", " ")).append("|")
+                              .append("0").append("\n");
+                        } else {
+                            // File hệ thống (new_email.txt)
+                            sb.append("ACCOUNTFILE|").append(f.getName()).append("\n");
+                        }
                     }
                 }
             }
+
             return sb.toString();
         } catch (Exception e) {
             return "ERROR|" + e.getMessage();
         }
     }
 
-    private String getMailContent(String user, String folder, String fileName) {
+    private String getMailContent(String user, String fileName) {
         try {
             File dir = new File(SERVER_DIR, user);
-            File mail = new File(new File(dir, folder), fileName);
+            File mail = new File(dir, fileName);
             if (!mail.exists()) return "ERROR|Mail not found";
             String content = read(mail);
             return "OK|" + content;
@@ -261,130 +211,23 @@ public class ServerCore {
         }
     }
 
-    private String toggleStar(String user, String folder, String fileName) {
+    private String deleteMail(String user, String fileName) {
         try {
             File dir = new File(SERVER_DIR, user);
-            File starredFile = new File(dir, "starred.txt");
-            Set<String> starred = new LinkedHashSet<>();
-            if (starredFile.exists()) {
-                for (String line : read(starredFile).split("\n")) {
-                    String s = line.trim();
-                    if (!s.isEmpty()) starred.add(s);
-                }
-            }
-
-            boolean wasStarred = starred.contains(fileName);
-            if (wasStarred) starred.remove(fileName);
-            else starred.add(fileName);
-
-            StringBuilder sb = new StringBuilder();
-            for (String s : starred) sb.append(s).append("\n");
-            write(starredFile, sb.toString());
-
-            return "OK|" + (wasStarred ? "Unstarred" : "Starred");
+            File mail = new File(dir, fileName);
+            if (!mail.exists()) return "ERROR|Mail not found";
+            mail.delete();
+            return "OK|Deleted";
         } catch (Exception e) {
             return "ERROR|" + e.getMessage();
         }
     }
 
-    private String deleteMail(String user, String folder, String fileName) {
-        try {
-            File dir = new File(SERVER_DIR, user);
-            File src = new File(new File(dir, folder), fileName);
-            if (!src.exists()) return "ERROR|Mail not found";
-
-            File trash = new File(dir, "trash");
-            trash.mkdirs();
-            File dst = new File(trash, fileName);
-
-            if (folder.equals("trash")) {
-                src.delete();
-                return "OK|Permanently deleted";
-            }
-
-            java.nio.file.Files.move(src.toPath(), dst.toPath(),
-                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            return "OK|Moved to trash";
-        } catch (Exception e) {
-            return "ERROR|" + e.getMessage();
-        }
-    }
-
-    private void appendMailList(StringBuilder sb, File folder, String user, File dir, String folderName) {
-        if (!folder.exists()) return;
-        File[] files = folder.listFiles();
-        if (files == null) return;
-
-        Arrays.sort(files, Comparator.comparing(File::getName).reversed());
-
-        Set<String> starred = new HashSet<>();
-        File sf = new File(dir, "starred.txt");
-        if (sf.exists()) {
-            try {
-                for (String line : read(sf).split("\n")) {
-                    String s = line.trim();
-                    if (!s.isEmpty()) starred.add(s);
-                }
-            } catch (Exception ignored) {}
-        }
-
-        for (File f : files) {
-            if (!f.isFile()) continue;
-            try {
-                String content = read(f);
-                String from = extract(content, "From");
-                String to   = extract(content, "To");
-                String time = extract(content, "Thoi gian gui");
-                String subj = extract(content, "Tieu de");
-                String body = extract(content, "Noi dung");
-
-                boolean isStar = starred.contains(f.getName());
-
-                sb.append("MAIL|")
-                  .append(folderName).append("|")
-                  .append(f.getName()).append("|")
-                  .append(from).append("|")
-                  .append(to).append("|")
-                  .append(subj).append("|")
-                  .append(time).append("|")
-                  .append(body.replace("\n", " ")).append("|")
-                  .append(isStar ? "1" : "0").append("\n");
-            } catch (Exception ignored) {}
-        }
-    }
-
-    private void appendOneMail(StringBuilder sb, File f, String folderName, String user) {
-        try {
-            File dir = new File(SERVER_DIR, user);
-            String content = read(f);
-            String from = extract(content, "From");
-            String to   = extract(content, "To");
-            String time = extract(content, "Thoi gian gui");
-            String subj = extract(content, "Tieu de");
-            String body = extract(content, "Noi dung");
-
-            File sf = new File(dir, "starred.txt");
-            Set<String> starred = new HashSet<>();
-            if (sf.exists()) {
-                for (String line : read(sf).split("\n")) {
-                    if (!line.trim().isEmpty()) starred.add(line.trim());
-                }
-            }
-            boolean isStar = starred.contains(f.getName());
-
-            sb.append("MAIL|")
-              .append(folderName).append("|")
-              .append(f.getName()).append("|")
-              .append(from).append("|")
-              .append(to).append("|")
-              .append(subj).append("|")
-              .append(time).append("|")
-              .append(body.replace("\n", " ")).append("|")
-              .append(isStar ? "1" : "0").append("\n");
-        } catch (Exception ignored) {}
-    }
-
-    // YÊU CẦU #2: GỬI MAIL
+    // ═══════════════════════════════════════════════════════════
+    //  YÊU CẦU #2: GỬI MAIL
+    //  Tạo 1 FILE trong thư mục NGƯỜI NHẬN với 4 thông tin:
+    //    FromIP / SentTime / Subject / Body
+    // ═══════════════════════════════════════════════════════════
     private String sendMail(String sender, String fromEmail, String toEmail,
                             String subject, String content,
                             InetAddress senderIP) {
@@ -396,28 +239,25 @@ public class ServerCore {
             File rDir = new File(SERVER_DIR, receiver);
             if (!rDir.exists()) return "ERROR|Receiver does not exist";
 
-            File senderDir = new File(SERVER_DIR, sender);
-
+            // ⭐ Tạo file mail trực tiếp trong folder người nhận
             String ts = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS").format(new Date());
             String fname = "email_" + sender + "_" + ts + ".txt";
 
+            String sentTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+
             StringBuilder body = new StringBuilder();
-            body.append("From          : ").append(fromEmail).append("\n");
-            body.append("To            : ").append(toEmail).append("\n");
-            body.append("IP nguoi gui  : ").append(senderIP.getHostAddress()).append("\n");
-            body.append("Thoi gian gui : ").append(new Date()).append("\n");
-            body.append("Tieu de       : ").append(subject).append("\n");
-            body.append("Noi dung      : ").append(content).append("\n");
+            body.append("From: ").append(sender).append("\n");
+            body.append("FromIP: ").append(senderIP.getHostAddress()).append("\n");
+            body.append("To: ").append(receiver).append("\n");
+            body.append("Subject: ").append(subject).append("\n");
+            body.append("SentTime: ").append(sentTime).append("\n");
+            body.append("\n");
+            body.append(content).append("\n");
 
-            File receiverInbox = new File(rDir, "inbox");
-            receiverInbox.mkdirs();
-            write(new File(receiverInbox, fname), body.toString());
+            // ⭐ Lưu TRỰC TIẾP vào folder người nhận (không cần folder con inbox)
+            write(new File(rDir, fname), body.toString());
 
-            File senderSent = new File(senderDir, "sent");
-            senderSent.mkdirs();
-            write(new File(senderSent, fname), body.toString());
-
-            logger.log("[SEND] " + fromEmail + " -> " + toEmail);
+            logger.log("[SEND] " + sender + " -> " + receiver + " | " + subject);
             return "OK|Email sent to " + toEmail;
         } catch (Exception e) {
             return "ERROR|" + e.getMessage();
@@ -433,8 +273,8 @@ public class ServerCore {
             StringBuilder sb = new StringBuilder("OK|USERLIST\n");
             Arrays.sort(subs, Comparator.comparing(File::getName));
             for (File f : subs) {
-                if (f.isDirectory() && new File(f, "email.txt").exists()) {
-                    String email = read(new File(f, "email.txt")).trim();
+                if (f.isDirectory() && new File(f, "new_email.txt").exists()) {
+                    String email = f.getName() + "@gmail.com";
                     sb.append("USER|").append(f.getName()).append("|").append(email).append("\n");
                 }
             }
@@ -446,11 +286,18 @@ public class ServerCore {
 
     private String extract(String content, String key) {
         for (String line : content.split("\n")) {
+            if (line.startsWith(key + ":")) return line.substring(key.length() + 1).trim();
             if (line.startsWith(key)) {
                 int idx = line.indexOf(':');
                 if (idx > 0) return line.substring(idx + 1).trim();
             }
         }
+        return "";
+    }
+
+    private String extractBody(String content) {
+        int idx = content.indexOf("\n\n");
+        if (idx > 0) return content.substring(idx + 2).trim();
         return "";
     }
 
